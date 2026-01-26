@@ -111,14 +111,14 @@ const Index = () => {
             <TabsList className="w-full h-12 rounded-none bg-transparent p-0">
               <TabsTrigger
                 value="config"
-                className="flex-1 h-full rounded-none gap-1.5 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+                className="flex-1 h-full rounded-none gap-1.5 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
               >
                 <Settings className="h-4 w-4" />
                 <span className="text-xs">Configurações</span>
               </TabsTrigger>
               <TabsTrigger
                 value="console"
-                className="flex-1 h-full rounded-none gap-1.5 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+                className="flex-1 h-full rounded-none gap-1.5 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
               >
                 <ScrollText className="h-4 w-4" />
                 <span className="text-xs">Console</span>
