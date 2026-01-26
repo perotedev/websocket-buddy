@@ -80,38 +80,40 @@ export function SubscriptionPanel({
       </div>
 
       {/* Lista de tópicos inscritos */}
-      <div className="flex-1 flex flex-col gap-1 min-h-0">
+      <div className="flex-1 flex flex-col gap-1 min-h-0 overflow-hidden">
         <Label className="text-xs font-medium uppercase flex-shrink-0">Ativos</Label>
         {subscribedTopics.length === 0 ? (
           <div className="border border-dashed border-muted p-2 text-center text-muted-foreground text-xs flex-shrink-0">
             Nenhuma inscrição
           </div>
         ) : (
-          <ScrollArea className="flex-1 border border-border min-h-0">
-            <div className="p-1.5 space-y-1">
-              {subscribedTopics.map((topic) => (
-                <div
-                  key={topic.id}
-                  className="flex items-center justify-between bg-secondary p-1.5 border border-border"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Radio className="h-2.5 w-2.5 text-green-500 flex-shrink-0" />
-                    <span className="font-mono text-xs truncate">
-                      {topic.destination}
-                    </span>
-                  </div>
-                  <Button
-                    onClick={() => onUnsubscribe(topic.id)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 flex-shrink-0"
+          <div className="flex-1 min-h-0 overflow-hidden border border-border">
+            <ScrollArea className="h-full">
+              <div className="p-1.5 space-y-1">
+                {subscribedTopics.map((topic) => (
+                  <div
+                    key={topic.id}
+                    className="flex items-center justify-between bg-secondary p-1.5 border border-border"
                   >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Radio className="h-2.5 w-2.5 text-green-500 flex-shrink-0" />
+                      <span className="font-mono text-xs truncate">
+                        {topic.destination}
+                      </span>
+                    </div>
+                    <Button
+                      onClick={() => onUnsubscribe(topic.id)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 flex-shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         )}
       </div>
     </div>

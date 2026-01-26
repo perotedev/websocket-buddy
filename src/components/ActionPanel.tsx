@@ -25,9 +25,9 @@ export function ActionPanel({
   onSendMessage
 }: ActionPanelProps) {
   return (
-    <div className="border border-border p-2 sm:p-3 shadow-sm h-full flex flex-col">
-      <Tabs defaultValue="subscriptions" className="flex-1 flex flex-col">
-        <TabsList className="w-full grid grid-cols-2 h-8 sm:h-10">
+    <div className="border border-border p-2 sm:p-3 shadow-sm h-full flex flex-col overflow-hidden">
+      <Tabs defaultValue="subscriptions" className="flex-1 flex flex-col min-h-0">
+        <TabsList className="w-full grid grid-cols-2 h-8 sm:h-10 flex-shrink-0">
           <TabsTrigger value="subscriptions" className="text-xs sm:text-sm gap-1.5">
             <Radio className="h-3 w-3 sm:h-4 sm:w-4" />
             Inscrições
@@ -38,8 +38,8 @@ export function ActionPanel({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="subscriptions" className="flex-1 mt-2 sm:mt-3 overflow-hidden" asChild>
-          <div className="h-full">
+        <TabsContent value="subscriptions" className="flex-1 mt-2 sm:mt-3 overflow-hidden min-h-0" asChild>
+          <div className="h-full overflow-hidden">
             <SubscriptionPanel
               subscribedTopics={subscribedTopics}
               connectionType={connectionType}
@@ -50,8 +50,8 @@ export function ActionPanel({
           </div>
         </TabsContent>
 
-        <TabsContent value="messages" className="flex-1 mt-2 sm:mt-3 overflow-hidden" asChild>
-          <div className="h-full">
+        <TabsContent value="messages" className="flex-1 mt-2 sm:mt-3 overflow-hidden min-h-0" asChild>
+          <div className="h-full overflow-hidden">
             <MessagePanel
               connectionType={connectionType}
               isConnected={isConnected}

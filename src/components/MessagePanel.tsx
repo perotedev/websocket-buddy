@@ -91,7 +91,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
       )}
 
       {/* Campo de mensagem */}
-      <div className="flex-1 flex flex-col gap-1 min-h-0">
+      <div className="flex-1 flex flex-col gap-1 min-h-0 overflow-hidden">
         <div className="flex items-center justify-between flex-shrink-0">
           <Label htmlFor="message" className="text-xs font-medium uppercase">
             Mensagem
@@ -113,7 +113,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
           onKeyDown={handleKeyDown}
           placeholder='{"type": "ping"}'
           disabled={!isConnected}
-          className="font-mono text-xs resize-none flex-1"
+          className="font-mono text-xs resize-none flex-1 min-h-0"
         />
         <p className="text-[10px] text-muted-foreground flex-shrink-0">
           Ctrl+Enter
