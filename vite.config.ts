@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
-        name: "WebSocket Buddy",
-        short_name: "WS Buddy",
+        name: "WebSocketTest",
+        short_name: "WebTest",
         description: "WebSocket testing and debugging tool",
         theme_color: "#000000",
         background_color: "#ffffff",
