@@ -18,7 +18,7 @@ interface ConnectionPanelProps {
 
 export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionPanelProps) {
   // URL padrão para testes
-  const [url, setUrl] = useState('wss://echo.websocket.org');
+  const [url, setUrl] = useState('');
   const [type, setType] = useState<ConnectionType>('websocket');
 
   // Handler para conectar
