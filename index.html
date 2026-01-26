@@ -21,6 +21,21 @@
     <meta property="og:title" content="WebSocket Tester" />
     <meta property="og:description" content="WebSocket testing and debugging tool" />
     <meta property="og:type" content="website" />
+
+    <!-- Theme initialization script to prevent FOUC -->
+    <script>
+      (function() {
+        const THEME_STORAGE_KEY = 'websocket-buddy-theme';
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+
+        if (savedTheme) {
+          document.documentElement.classList.add(savedTheme);
+        } else {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.add(prefersDark ? 'dark' : 'light');
+        }
+      })();
+    </script>
   </head>
 
   <body>

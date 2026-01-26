@@ -7,6 +7,7 @@ import { useWebSocket, LogEntry, ConnectionType } from '@/hooks/useWebSocket';
 import { ConnectionPanel } from '@/components/ConnectionPanel';
 import { ActionPanel } from '@/components/ActionPanel';
 import { EventConsole } from '@/components/EventConsole';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Terminal } from 'lucide-react';
 
 const Index = () => {
@@ -49,13 +50,16 @@ const Index = () => {
       {/* Header */}
       <header className="border-b border-border flex-shrink-0">
         <div className="container mx-auto px-2 sm:px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Terminal className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold uppercase tracking-tight">
-                WebSocket Tester
-              </h1>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Terminal className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-bold uppercase tracking-tight">
+                  WebSocket Tester
+                </h1>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>
