@@ -116,8 +116,8 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
         </div>
 
         {/* Tipo de conexão */}
-        <div className="space-y-1">
-          <Label className="text-xs font-medium uppercase">Tipo</Label>
+        <div className="space-y-1 flex gap-3 items-center">
+          <Label className="text-xs font-medium pt-1 uppercase">Tipo</Label>
           <RadioGroup
             value={type}
             onValueChange={(value) => setType(value as ConnectionType)}
