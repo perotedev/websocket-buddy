@@ -88,7 +88,7 @@ const Index = () => {
           </div>
 
           {/* Coluna direita - Console */}
-          <div className="lg:col-span-8 h-full overflow-hidden">
+          <div className="lg:col-span-8 h-full min-h-0">
             <EventConsole logs={logs} onClear={clearLogs} />
           </div>
         </div>

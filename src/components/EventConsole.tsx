@@ -82,30 +82,31 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
   };
 
   return (
-    <div className="border border-border p-2 sm:p-3 shadow-sm flex flex-col h-full">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Console</h2>
-        <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className="font-mono text-[10px] px-1.5">
-            {logs.length}
-          </Badge>
-          <Button
-            onClick={onClear}
-            variant="outline"
-            size="sm"
-            className="gap-1 h-7 px-2"
-          >
-            <Trash2 className="h-3 w-3" />
-            <span className="hidden sm:inline text-xs">Limpar</span>
-          </Button>
+    <div className="border border-border shadow-sm h-full flex flex-col">
+      <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-2 flex-shrink-0">
+          <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Console</h2>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="outline" className="font-mono text-[10px] px-1.5">
+              {logs.length}
+            </Badge>
+            <Button
+              onClick={onClear}
+              variant="outline"
+              size="sm"
+              className="gap-1 h-7 px-2"
+            >
+              <Trash2 className="h-3 w-3" />
+              <span className="hidden sm:inline text-xs">Limpar</span>
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Área de logs */}
-      <ScrollArea
-        className="flex-1 border border-border bg-secondary/30"
-        ref={scrollRef}
-      >
+        {/* Área de logs */}
+        <ScrollArea
+          className="flex-1 border border-border bg-secondary/30 min-h-0"
+          ref={scrollRef}
+        >
         <div className="p-1.5 space-y-0.5 font-mono text-xs">
           {logs.length === 0 ? (
             <div className="text-center text-muted-foreground py-4 text-xs">
@@ -168,6 +169,7 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
           )}
         </div>
       </ScrollArea>
+      </div>
     </div>
   );
 }
