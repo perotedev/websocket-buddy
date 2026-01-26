@@ -88,7 +88,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder={type === 'stomp' ? 'ws://localhost:8080/ws' : 'wss://echo.websocket.org'}
+            placeholder={type === 'stomp' ? 'wss://seu-servidor/ws' : 'wss://echo.websocket.org'}
             disabled={isConnected || isConnecting}
             className="font-mono text-xs h-8"
           />
