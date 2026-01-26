@@ -64,14 +64,14 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
   };
 
   return (
-    <div className="border-2 border-border p-4 shadow-sm">
-      <h2 className="text-lg font-bold uppercase tracking-wide mb-4">Enviar Mensagem</h2>
+    <div className="border border-border p-2 sm:p-3 shadow-sm">
+      <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide mb-2">Enviar</h2>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Destino STOMP */}
         {connectionType === 'stomp' && (
-          <div className="space-y-2">
-            <Label htmlFor="dest" className="text-sm font-medium uppercase">
+          <div className="space-y-1">
+            <Label htmlFor="dest" className="text-xs font-medium uppercase">
               Destino
             </Label>
             <Input
@@ -81,25 +81,25 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
               onChange={(e) => setDestination(e.target.value)}
               placeholder="/app/send"
               disabled={!isConnected}
-              className="font-mono text-sm"
+              className="font-mono text-xs h-8"
             />
           </div>
         )}
 
         {/* Campo de mensagem */}
-        <div className="space-y-2">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label htmlFor="message" className="text-sm font-medium uppercase">
+            <Label htmlFor="message" className="text-xs font-medium uppercase">
               Mensagem
             </Label>
             <Button
               onClick={formatJson}
               variant="ghost"
               size="sm"
-              className="h-6 text-xs gap-1"
+              className="h-5 text-[10px] gap-1 px-1.5"
             >
               <Braces className="h-3 w-3" />
-              Formatar JSON
+              <span className="hidden sm:inline">JSON</span>
             </Button>
           </div>
           <Textarea
@@ -107,24 +107,24 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder='{"type": "ping", "data": "hello"}'
+            placeholder='{"type": "ping"}'
             disabled={!isConnected}
-            className="font-mono text-sm min-h-24 resize-y"
+            className="font-mono text-xs min-h-16 resize-none"
           />
-          <p className="text-xs text-muted-foreground">
-            Ctrl+Enter para enviar
+          <p className="text-[10px] text-muted-foreground">
+            Ctrl+Enter
           </p>
         </div>
 
         {/* Headers STOMP (opcional) */}
         {connectionType === 'stomp' && (
-          <div className="space-y-2">
+          <div className="space-y-1">
             <button
               type="button"
               onClick={() => setShowHeaders(!showHeaders)}
-              className="text-sm text-muted-foreground hover:text-foreground underline"
+              className="text-xs text-muted-foreground hover:text-foreground underline"
             >
-              {showHeaders ? 'Ocultar headers' : 'Adicionar headers'}
+              {showHeaders ? 'Ocultar headers' : '+ Headers'}
             </button>
             {showHeaders && (
               <Textarea
@@ -132,7 +132,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
                 onChange={(e) => setHeaders(e.target.value)}
                 placeholder='{"content-type": "application/json"}'
                 disabled={!isConnected}
-                className="font-mono text-sm min-h-16"
+                className="font-mono text-xs min-h-12 resize-none"
               />
             )}
           </div>
@@ -142,9 +142,9 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
         <Button
           onClick={handleSend}
           disabled={!isConnected || !message.trim()}
-          className="w-full gap-2"
+          className="w-full gap-1.5 h-8 text-xs"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-3.5 w-3.5" />
           Enviar
         </Button>
       </div>

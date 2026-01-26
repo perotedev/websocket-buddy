@@ -44,21 +44,21 @@ export function SubscriptionPanel({
   };
 
   return (
-    <div className="border-2 border-border p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold uppercase tracking-wide">Inscrições</h2>
-        <Badge variant="outline" className="font-mono text-xs">
-          {subscribedTopics.length} ativo(s)
+    <div className="border border-border p-2 sm:p-3 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Inscrições</h2>
+        <Badge variant="outline" className="font-mono text-[10px] px-1.5">
+          {subscribedTopics.length}
         </Badge>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Campo para novo tópico */}
-        <div className="space-y-2">
-          <Label htmlFor="topic" className="text-sm font-medium uppercase">
-            {connectionType === 'stomp' ? 'Destino STOMP' : 'Filtro/Canal'}
+        <div className="space-y-1">
+          <Label htmlFor="topic" className="text-xs font-medium uppercase">
+            {connectionType === 'stomp' ? 'Destino' : 'Canal'}
           </Label>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Input
               id="topic"
               type="text"
@@ -67,41 +67,37 @@ export function SubscriptionPanel({
               onKeyPress={handleKeyPress}
               placeholder={connectionType === 'stomp' ? '/topic/messages' : 'canal-1'}
               disabled={!isConnected}
-              className="font-mono text-sm flex-1"
+              className="font-mono text-xs flex-1 h-8"
             />
             <Button
               onClick={handleSubscribe}
               disabled={!isConnected || !destination.trim()}
               size="icon"
+              className="flex-shrink-0 h-8 w-8"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
-          {connectionType === 'stomp' && (
-            <p className="text-xs text-muted-foreground">
-              Exemplos: /topic/news, /queue/orders, /user/queue/replies
-            </p>
-          )}
         </div>
 
         {/* Lista de tópicos inscritos */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium uppercase">Tópicos Ativos</Label>
+        <div className="space-y-1">
+          <Label className="text-xs font-medium uppercase">Ativos</Label>
           {subscribedTopics.length === 0 ? (
-            <div className="border-2 border-dashed border-muted p-4 text-center text-muted-foreground text-sm">
-              Nenhuma inscrição ativa
+            <div className="border border-dashed border-muted p-2 text-center text-muted-foreground text-xs">
+              Nenhuma inscrição
             </div>
           ) : (
-            <ScrollArea className="h-32 border-2 border-border">
-              <div className="p-2 space-y-2">
+            <ScrollArea className="h-20 border border-border">
+              <div className="p-1.5 space-y-1">
                 {subscribedTopics.map((topic) => (
                   <div
                     key={topic.id}
-                    className="flex items-center justify-between bg-secondary p-2 border border-border"
+                    className="flex items-center justify-between bg-secondary p-1.5 border border-border"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Radio className="h-3 w-3 text-chart-2 flex-shrink-0" />
-                      <span className="font-mono text-sm truncate">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Radio className="h-2.5 w-2.5 text-green-500 flex-shrink-0" />
+                      <span className="font-mono text-xs truncate">
                         {topic.destination}
                       </span>
                     </div>
@@ -109,7 +105,7 @@ export function SubscriptionPanel({
                       onClick={() => onUnsubscribe(topic.id)}
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 flex-shrink-0"
+                      className="h-5 w-5 flex-shrink-0"
                     >
                       <X className="h-3 w-3" />
                     </Button>

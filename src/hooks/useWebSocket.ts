@@ -12,7 +12,7 @@ export type ConnectionType = 'websocket' | 'stomp';
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 // Tipos de log para o console de eventos
-export type LogType = 'INFO' | 'MESSAGE' | 'ERROR' | 'SENT';
+export type LogType = 'INFO' | 'MESSAGE' | 'ERROR' | 'SENT' | 'SUBSCRIBE' | 'UNSUBSCRIBE';
 
 // Interface para entrada de log
 export interface LogEntry {
@@ -101,21 +101,30 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
           console.log('[STOMP Debug]', str);
         },
         reconnectDelay: 0, // Desabilita reconexão automática para controle manual
+        heartbeatIncoming: 10000, // Heartbeat do servidor (10s)
+        heartbeatOutgoing: 10000, // Heartbeat do cliente (10s)
         onConnect: () => {
           setStatus('connected');
           onLog({ type: 'INFO', message: `STOMP conectado ao servidor: ${url}` });
         },
         onStompError: (frame) => {
           setStatus('error');
-          onLog({ 
-            type: 'ERROR', 
+          onLog({
+            type: 'ERROR',
             message: `Erro STOMP: ${frame.headers['message'] || 'Erro desconhecido'}`,
             data: frame.body
           });
         },
         onWebSocketClose: (event) => {
           setStatus('disconnected');
-          onLog({ type: 'INFO', message: 'Conexão STOMP encerrada' });
+          onLog({
+            type: 'INFO',
+            message: `Conexão STOMP encerrada (código: ${event.code})${event.reason ? `, razão: ${event.reason}` : ''}`
+          });
+        },
+        onWebSocketError: (event) => {
+          setStatus('error');
+          onLog({ type: 'ERROR', message: 'Erro na conexão WebSocket do STOMP' });
         },
         onDisconnect: () => {
           setStatus('disconnected');
@@ -124,9 +133,10 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       });
 
       stompClientRef.current = client;
-      
+
       try {
         client.activate();
+        onLog({ type: 'INFO', message: 'Ativando cliente STOMP...' });
       } catch (error) {
         setStatus('error');
         onLog({ type: 'ERROR', message: `Erro ao ativar cliente STOMP: ${error}` });
@@ -171,24 +181,38 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
   const subscribe = useCallback((destination: string) => {
     const id = crypto.randomUUID();
 
-    if (connectionType === 'stomp' && stompClientRef.current?.connected) {
-      // Inscrição STOMP
-      const subscription = stompClientRef.current.subscribe(destination, (message: IMessage) => {
-        onLog({
-          type: 'MESSAGE',
-          message: `[${destination}] Mensagem recebida`,
-          data: message.body
-        });
-      });
+    if (connectionType === 'stomp') {
+      if (!stompClientRef.current) {
+        onLog({ type: 'ERROR', message: 'Cliente STOMP não inicializado' });
+        return;
+      }
 
-      subscriptionsRef.current.set(id, subscription);
-      setSubscribedTopics((prev) => [...prev, { id, destination }]);
-      onLog({ type: 'INFO', message: `Inscrito em: ${destination}` });
+      if (!stompClientRef.current.connected) {
+        onLog({ type: 'ERROR', message: 'STOMP não conectado. Aguarde a conexão ser estabelecida.' });
+        return;
+      }
+
+      try {
+        // Inscrição STOMP
+        const subscription = stompClientRef.current.subscribe(destination, (message: IMessage) => {
+          onLog({
+            type: 'MESSAGE',
+            message: `[${destination}] Mensagem recebida`,
+            data: message.body
+          });
+        });
+
+        subscriptionsRef.current.set(id, subscription);
+        setSubscribedTopics((prev) => [...prev, { id, destination }]);
+        onLog({ type: 'SUBSCRIBE', message: `Inscrito em: ${destination}` });
+      } catch (error) {
+        onLog({ type: 'ERROR', message: `Erro ao se inscrever em ${destination}: ${error}` });
+      }
     } else if (connectionType === 'websocket') {
       // Para WebSocket puro, apenas registramos o "tópico" para organização
       // As mensagens chegam pelo handler onmessage geral
       setSubscribedTopics((prev) => [...prev, { id, destination }]);
-      onLog({ type: 'INFO', message: `Filtro adicionado: ${destination} (WebSocket puro recebe todas as mensagens)` });
+      onLog({ type: 'SUBSCRIBE', message: `Filtro adicionado: ${destination} (WebSocket puro recebe todas as mensagens)` });
     } else {
       onLog({ type: 'ERROR', message: 'Não conectado. Conecte-se primeiro.' });
     }
@@ -211,7 +235,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
 
     setSubscribedTopics((prev) => prev.filter((t) => t.id !== id));
     if (topic) {
-      onLog({ type: 'INFO', message: `Desinscrito de: ${topic.destination}` });
+      onLog({ type: 'UNSUBSCRIBE', message: `Desinscrito de: ${topic.destination}` });
     }
   }, [connectionType, subscribedTopics, onLog]);
 
@@ -222,24 +246,56 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
    * @param headers Headers adicionais (apenas para STOMP)
    */
   const sendMessage = useCallback((message: string, destination?: string, headers?: Record<string, string>) => {
-    if (connectionType === 'websocket' && wsRef.current?.readyState === WebSocket.OPEN) {
+    if (connectionType === 'websocket') {
+      if (!wsRef.current) {
+        onLog({ type: 'ERROR', message: 'WebSocket não inicializado' });
+        return;
+      }
+      if (wsRef.current.readyState !== WebSocket.OPEN) {
+        onLog({ type: 'ERROR', message: 'WebSocket não está aberto. Estado atual: ' + wsRef.current.readyState });
+        return;
+      }
       // Envio via WebSocket puro
-      wsRef.current.send(message);
-      onLog({ type: 'SENT', message: 'Mensagem enviada', data: message });
-    } else if (connectionType === 'stomp' && stompClientRef.current?.connected && destination) {
+      try {
+        wsRef.current.send(message);
+        onLog({ type: 'SENT', message: 'Mensagem enviada', data: message });
+      } catch (error) {
+        onLog({ type: 'ERROR', message: `Erro ao enviar mensagem: ${error}` });
+      }
+    } else if (connectionType === 'stomp') {
+      if (!stompClientRef.current) {
+        onLog({ type: 'ERROR', message: 'Cliente STOMP não inicializado' });
+        return;
+      }
+      if (!stompClientRef.current.connected) {
+        onLog({ type: 'ERROR', message: 'STOMP não conectado' });
+        return;
+      }
+      if (!destination) {
+        onLog({ type: 'ERROR', message: 'Destino é obrigatório para STOMP' });
+        return;
+      }
       // Envio via STOMP
-      stompClientRef.current.publish({
-        destination,
-        body: message,
-        headers: headers || {}
-      });
-      onLog({ 
-        type: 'SENT', 
-        message: `Mensagem enviada para: ${destination}`,
-        data: message
-      });
-    } else {
-      onLog({ type: 'ERROR', message: 'Não foi possível enviar. Verifique a conexão.' });
+      try {
+        // Adiciona headers padrão se não foram fornecidos
+        const finalHeaders = {
+          'content-type': 'application/json',
+          ...headers
+        };
+
+        stompClientRef.current.publish({
+          destination,
+          body: message,
+          headers: finalHeaders
+        });
+        onLog({
+          type: 'SENT',
+          message: `Mensagem enviada para: ${destination}`,
+          data: message
+        });
+      } catch (error) {
+        onLog({ type: 'ERROR', message: `Erro ao enviar mensagem STOMP: ${error}` });
+      }
     }
   }, [connectionType, onLog]);
 

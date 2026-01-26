@@ -42,21 +42,29 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
   // Configuração visual por tipo de log
   const getLogConfig = (type: LogType) => {
     const configs = {
-      INFO: { 
-        variant: 'secondary' as const, 
-        className: 'bg-secondary text-secondary-foreground' 
+      INFO: {
+        variant: 'secondary' as const,
+        className: 'bg-slate-500 text-white'
       },
-      MESSAGE: { 
-        variant: 'default' as const, 
-        className: 'bg-chart-2 text-primary-foreground' 
+      SUBSCRIBE: {
+        variant: 'default' as const,
+        className: 'bg-blue-500 text-white'
       },
-      SENT: { 
-        variant: 'outline' as const, 
-        className: 'bg-chart-4 text-primary-foreground' 
+      UNSUBSCRIBE: {
+        variant: 'outline' as const,
+        className: 'bg-orange-500 text-white'
       },
-      ERROR: { 
-        variant: 'destructive' as const, 
-        className: 'bg-destructive text-destructive-foreground' 
+      MESSAGE: {
+        variant: 'default' as const,
+        className: 'bg-green-500 text-white'
+      },
+      SENT: {
+        variant: 'outline' as const,
+        className: 'bg-purple-500 text-white'
+      },
+      ERROR: {
+        variant: 'destructive' as const,
+        className: 'bg-red-500 text-white'
       }
     };
     return configs[type];
@@ -74,33 +82,33 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
   };
 
   return (
-    <div className="border-2 border-border p-4 shadow-sm flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold uppercase tracking-wide">Console</h2>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="font-mono text-xs">
-            {logs.length} evento(s)
+    <div className="border border-border p-2 sm:p-3 shadow-sm flex flex-col h-full">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Console</h2>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className="font-mono text-[10px] px-1.5">
+            {logs.length}
           </Badge>
           <Button
             onClick={onClear}
             variant="outline"
             size="sm"
-            className="gap-1"
+            className="gap-1 h-7 px-2"
           >
             <Trash2 className="h-3 w-3" />
-            Limpar
+            <span className="hidden sm:inline text-xs">Limpar</span>
           </Button>
         </div>
       </div>
 
       {/* Área de logs */}
-      <ScrollArea 
-        className="flex-1 border-2 border-border bg-secondary/30 min-h-64" 
+      <ScrollArea
+        className="flex-1 border border-border bg-secondary/30"
         ref={scrollRef}
       >
-        <div className="p-2 space-y-1 font-mono text-sm">
+        <div className="p-1.5 space-y-0.5 font-mono text-xs">
           {logs.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
+            <div className="text-center text-muted-foreground py-4 text-xs">
               Aguardando eventos...
             </div>
           ) : (
@@ -110,40 +118,40 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
               const hasData = !!log.data;
 
               return (
-                <div key={log.id} className="border-b border-border/50 pb-1">
-                  <div 
-                    className={`flex items-start gap-2 ${hasData ? 'cursor-pointer hover:bg-secondary/50' : ''}`}
+                <div key={log.id} className="border-b border-border/50 pb-0.5">
+                  <div
+                    className={`flex items-start gap-1.5 ${hasData ? 'cursor-pointer hover:bg-secondary/50' : ''}`}
                     onClick={() => hasData && toggleExpand(log.id)}
                   >
                     {/* Indicador de expansão */}
                     {hasData ? (
                       isExpanded ? (
-                        <ChevronDown className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <ChevronDown className="h-3 w-3 mt-0.5 flex-shrink-0" />
                       ) : (
-                        <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <ChevronRight className="h-3 w-3 mt-0.5 flex-shrink-0" />
                       )
                     ) : (
-                      <span className="w-4" />
+                      <span className="w-3" />
                     )}
 
                     {/* Timestamp */}
-                    <span className="text-muted-foreground text-xs flex-shrink-0">
+                    <span className="text-muted-foreground text-[9px] flex-shrink-0 hidden sm:inline">
                       {formatTime(log.timestamp)}
                     </span>
 
                     {/* Tipo */}
-                    <Badge className={`${config.className} text-xs flex-shrink-0`}>
+                    <Badge className={`${config.className} text-[9px] flex-shrink-0 px-1 py-0`}>
                       {log.type}
                     </Badge>
 
                     {/* Mensagem */}
-                    <span className="break-all">{log.message}</span>
+                    <span className="break-all text-[10px]">{log.message}</span>
                   </div>
 
                   {/* Dados expandidos */}
                   {hasData && isExpanded && (
-                    <div className="ml-6 mt-2 p-2 bg-background border border-border overflow-x-auto">
-                      <pre className="text-xs whitespace-pre-wrap break-all">
+                    <div className="ml-3 sm:ml-4 mt-1 p-1.5 bg-background border border-border overflow-x-auto">
+                      <pre className="text-[9px] whitespace-pre-wrap break-all">
                         {(() => {
                           try {
                             return JSON.stringify(JSON.parse(log.data!), null, 2);

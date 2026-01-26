@@ -31,25 +31,25 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
   // Indicador de status visual
   const StatusIndicator = () => {
     const statusConfig = {
-      disconnected: { 
-        icon: WifiOff, 
-        label: 'Desconectado', 
-        className: 'text-muted-foreground' 
+      disconnected: {
+        icon: WifiOff,
+        label: 'Desconectado',
+        className: 'text-slate-400'
       },
-      connecting: { 
-        icon: Loader2, 
-        label: 'Conectando...', 
-        className: 'text-muted-foreground animate-spin' 
+      connecting: {
+        icon: Loader2,
+        label: 'Conectando...',
+        className: 'text-yellow-500 animate-spin'
       },
-      connected: { 
-        icon: Wifi, 
-        label: 'Conectado', 
-        className: 'text-chart-2' 
+      connected: {
+        icon: Wifi,
+        label: 'Conectado',
+        className: 'text-green-500'
       },
-      error: { 
-        icon: AlertCircle, 
-        label: 'Erro', 
-        className: 'text-destructive' 
+      error: {
+        icon: AlertCircle,
+        label: 'Erro',
+        className: 'text-red-500'
       }
     };
 
@@ -57,9 +57,9 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
     const Icon = config.icon;
 
     return (
-      <div className="flex items-center gap-2">
-        <Icon className={`h-5 w-5 ${config.className}`} />
-        <span className={`text-sm font-medium ${config.className}`}>
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.className}`} />
+        <span className={`text-xs sm:text-sm font-medium ${config.className}`}>
           {config.label}
         </span>
       </div>
@@ -70,17 +70,17 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
   const isConnecting = status === 'connecting';
 
   return (
-    <div className="border-2 border-border p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold uppercase tracking-wide">Conexão</h2>
+    <div className="border border-border p-2 sm:p-3 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Conexão</h2>
         <StatusIndicator />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* URL do WebSocket */}
-        <div className="space-y-2">
-          <Label htmlFor="ws-url" className="text-sm font-medium uppercase">
-            URL do WebSocket
+        <div className="space-y-1">
+          <Label htmlFor="ws-url" className="text-xs font-medium uppercase">
+            URL
           </Label>
           <Input
             id="ws-url"
@@ -89,28 +89,28 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
             onChange={(e) => setUrl(e.target.value)}
             placeholder="wss://seu-servidor.com/ws"
             disabled={isConnected || isConnecting}
-            className="font-mono text-sm"
+            className="font-mono text-xs h-8"
           />
         </div>
 
         {/* Tipo de conexão */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium uppercase">Tipo de Conexão</Label>
+        <div className="space-y-1">
+          <Label className="text-xs font-medium uppercase">Tipo</Label>
           <RadioGroup
             value={type}
             onValueChange={(value) => setType(value as ConnectionType)}
             disabled={isConnected || isConnecting}
-            className="flex gap-6"
+            className="flex gap-3 sm:gap-4"
           >
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5">
               <RadioGroupItem value="websocket" id="ws-pure" />
-              <Label htmlFor="ws-pure" className="cursor-pointer">
-                WebSocket Puro
+              <Label htmlFor="ws-pure" className="cursor-pointer text-xs">
+                WebSocket
               </Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5">
               <RadioGroupItem value="stomp" id="ws-stomp" />
-              <Label htmlFor="ws-stomp" className="cursor-pointer">
+              <Label htmlFor="ws-stomp" className="cursor-pointer text-xs">
                 STOMP
               </Label>
             </div>
@@ -122,18 +122,18 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
           <Button
             onClick={handleConnect}
             disabled={isConnected || isConnecting || !url.trim()}
-            className="flex-1 gap-2"
+            className="flex-1 gap-1.5 h-8 text-xs"
           >
-            <Plug className="h-4 w-4" />
+            <Plug className="h-3.5 w-3.5" />
             Conectar
           </Button>
           <Button
             onClick={onDisconnect}
             disabled={!isConnected}
             variant="outline"
-            className="flex-1 gap-2"
+            className="flex-1 gap-1.5 h-8 text-xs"
           >
-            <Unplug className="h-4 w-4" />
+            <Unplug className="h-3.5 w-3.5" />
             Desconectar
           </Button>
         </div>
