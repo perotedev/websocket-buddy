@@ -97,7 +97,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
         {/* Token de Autenticação (ambos os tipos) */}
         <div className="space-y-1">
           <Label htmlFor="ws-token" className="text-xs font-medium uppercase">
-            Token de Autorização (Opcional) {type === 'websocket' && '(Opcional)'}
+            Token de Autorização {type === 'websocket' && '(Opcional)'}
           </Label>
           <Input
             id="ws-token"
