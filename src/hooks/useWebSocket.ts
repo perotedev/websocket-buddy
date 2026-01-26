@@ -109,10 +109,20 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         },
         onStompError: (frame) => {
           setStatus('error');
+          const errorMessage = frame.headers['message'] || 'Erro desconhecido';
+          const errorDetails = Object.entries(frame.headers)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n');
+
           onLog({
             type: 'ERROR',
-            message: `Erro STOMP: ${frame.headers['message'] || 'Erro desconhecido'}`,
-            data: frame.body
+            message: `Erro STOMP: ${errorMessage}`,
+            data: `Headers:\n${errorDetails}\n\nBody:\n${frame.body || '(vazio)'}`
+          });
+
+          console.error('[STOMP Error]', {
+            headers: frame.headers,
+            body: frame.body
           });
         },
         onWebSocketClose: (event) => {
@@ -195,10 +205,20 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       try {
         // Inscrição STOMP
         const subscription = stompClientRef.current.subscribe(destination, (message: IMessage) => {
+          console.log('[STOMP Received]', {
+            destination,
+            headers: message.headers,
+            body: message.body
+          });
+
+          const headersInfo = Object.entries(message.headers)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n');
+
           onLog({
             type: 'MESSAGE',
-            message: `[${destination}] Mensagem recebida`,
-            data: message.body
+            message: `← ${destination}`,
+            data: `Headers:\n${headersInfo}\n\nBody:\n${message.body}`
           });
         });
 
@@ -277,24 +297,37 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       }
       // Envio via STOMP
       try {
-        // Adiciona headers padrão se não foram fornecidos
-        const finalHeaders = {
-          'content-type': 'application/json',
-          ...headers
-        };
+        // Só adiciona content-type se não foi especificado pelo usuário
+        const finalHeaders = headers || {};
+        if (!finalHeaders['content-type'] && !finalHeaders['Content-Type']) {
+          finalHeaders['content-type'] = 'application/json';
+        }
+
+        // Log detalhado para debug
+        console.log('[STOMP Send]', {
+          destination,
+          body: message,
+          headers: finalHeaders
+        });
 
         stompClientRef.current.publish({
           destination,
           body: message,
           headers: finalHeaders
         });
+
         onLog({
           type: 'SENT',
-          message: `Mensagem enviada para: ${destination}`,
-          data: message
+          message: `→ ${destination}`,
+          data: `Headers: ${JSON.stringify(finalHeaders)}\n\nBody:\n${message}`
         });
       } catch (error) {
-        onLog({ type: 'ERROR', message: `Erro ao enviar mensagem STOMP: ${error}` });
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        onLog({
+          type: 'ERROR',
+          message: `Erro ao enviar mensagem STOMP: ${errorMsg}`,
+          data: `Destino: ${destination}\nMensagem: ${message}`
+        });
       }
     }
   }, [connectionType, onLog]);

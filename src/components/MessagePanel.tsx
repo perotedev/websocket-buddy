@@ -83,6 +83,9 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
               disabled={!isConnected}
               className="font-mono text-xs h-8"
             />
+            <p className="text-[10px] text-muted-foreground">
+              Ex: /app/chat, /app/message, /queue/reply
+            </p>
           </div>
         )}
 
@@ -124,16 +127,21 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
               onClick={() => setShowHeaders(!showHeaders)}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
-              {showHeaders ? 'Ocultar headers' : '+ Headers'}
+              {showHeaders ? 'Ocultar headers' : '+ Headers (opcional)'}
             </button>
             {showHeaders && (
-              <Textarea
-                value={headers}
-                onChange={(e) => setHeaders(e.target.value)}
-                placeholder='{"content-type": "application/json"}'
-                disabled={!isConnected}
-                className="font-mono text-xs min-h-12 resize-none"
-              />
+              <>
+                <Textarea
+                  value={headers}
+                  onChange={(e) => setHeaders(e.target.value)}
+                  placeholder='{"custom-header": "valor"}'
+                  disabled={!isConnected}
+                  className="font-mono text-xs min-h-12 resize-none"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Formato JSON. content-type é adicionado automaticamente
+                </p>
+              </>
             )}
           </div>
         )}
