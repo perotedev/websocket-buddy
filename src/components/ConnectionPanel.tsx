@@ -35,22 +35,26 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
       disconnected: {
         icon: WifiOff,
         label: 'Desconectado',
-        className: 'text-slate-400'
+        className: 'text-slate-400',
+        iconClassName: ''
       },
       connecting: {
         icon: Loader2,
         label: 'Conectando...',
-        className: 'text-yellow-500 animate-spin'
+        className: 'text-yellow-500',
+        iconClassName: 'animate-spin'
       },
       connected: {
         icon: Wifi,
         label: 'Conectado',
-        className: 'text-green-500'
+        className: 'text-green-500',
+        iconClassName: ''
       },
       error: {
         icon: AlertCircle,
         label: 'Erro',
-        className: 'text-red-500'
+        className: 'text-red-500',
+        iconClassName: ''
       }
     };
 
@@ -59,7 +63,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
 
     return (
       <div className="flex items-center gap-1.5 sm:gap-2">
-        <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.className}`} />
+        <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.className} ${config.iconClassName}`} />
         <span className={`text-xs sm:text-sm font-medium ${config.className}`}>
           {config.label}
         </span>
