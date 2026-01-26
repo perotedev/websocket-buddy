@@ -226,7 +226,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
 
     // Fecha WebSocket puro
     if (wsRef.current) {
-      console.log('[Disconnect] Fechando WebSocket puro...');
+      console.log('[Disconnect] Fechando WebSocket...');
       wsRef.current.close();
       wsRef.current = null;
     }
@@ -296,7 +296,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       // Para WebSocket puro, apenas registramos o "tópico" para organização
       // As mensagens chegam pelo handler onmessage geral
       setSubscribedTopics((prev) => [...prev, { id, destination }]);
-      onLog({ type: 'SUBSCRIBE', message: `Filtro adicionado: ${destination} (WebSocket puro recebe todas as mensagens)` });
+      onLog({ type: 'SUBSCRIBE', message: `Inscrição adicionada: ${destination} (WebSocket recebe todas as mensagens)` });
     } else {
       onLog({ type: 'ERROR', message: 'Não conectado. Conecte-se primeiro.' });
     }
