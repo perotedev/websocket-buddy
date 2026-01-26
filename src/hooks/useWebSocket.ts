@@ -45,6 +45,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
   const stompClientRef = useRef<Client | null>(null);
   const subscriptionsRef = useRef<Map<string, StompSubscription>>(new Map());
   const authTokenRef = useRef<string | undefined>(undefined);
+  const reconnectAttemptsRef = useRef<number>(0);
 
   /**
    * Conecta ao servidor WebSocket
@@ -57,6 +58,9 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
     disconnect();
     setConnectionType(type);
     setStatus('connecting');
+
+    // Reseta contador de tentativas de reconexão ao iniciar nova conexão
+    reconnectAttemptsRef.current = 0;
 
     // Armazena o token para uso nas mensagens
     authTokenRef.current = token;
@@ -124,8 +128,21 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         reconnectDelay: 5000, // 5 segundos para reconexão (como no Angular)
         heartbeatIncoming: 10000, // Heartbeat do servidor (10s)
         heartbeatOutgoing: 10000, // Heartbeat do cliente (10s)
+        beforeConnect: () => {
+          // Limita tentativas de reconexão a 3
+          if (reconnectAttemptsRef.current >= 3) {
+            console.log('[STOMP] Limite de tentativas de reconexão atingido (3)');
+            onLog({ type: 'ERROR', message: 'Limite de tentativas de reconexão atingido (3). Desativando reconexão automática.' });
+            if (stompClientRef.current) {
+              stompClientRef.current.deactivate();
+            }
+            return Promise.reject(new Error('Máximo de tentativas de reconexão atingido'));
+          }
+          return Promise.resolve();
+        },
         onConnect: (frame) => {
           console.log('[STOMP] Conectado com sucesso!', frame);
+          reconnectAttemptsRef.current = 0; // Reseta contador ao conectar com sucesso
           setStatus('connected');
           onLog({ type: 'INFO', message: `STOMP conectado ao servidor: ${url}` });
         },
@@ -156,16 +173,18 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         },
         onWebSocketClose: (event) => {
           console.log('[STOMP] WebSocket fechado', event);
+          reconnectAttemptsRef.current++; // Incrementa contador de tentativas
+          console.log(`[STOMP] Tentativa de reconexão ${reconnectAttemptsRef.current}/3`);
           setStatus('disconnected');
           onLog({
             type: 'INFO',
-            message: `Conexão STOMP encerrada (código: ${event.code})${event.reason ? `, razão: ${event.reason}` : ''}`
+            message: `Conexão STOMP encerrada (código: ${event.code})${event.reason ? `, razão: ${event.reason}` : ''} - Tentativa ${reconnectAttemptsRef.current}/3`
           });
         },
         onWebSocketError: (event) => {
           console.error('[STOMP] Erro no WebSocket', event);
           setStatus('error');
-          onLog({ type: 'ERROR', message: 'Erro na conexão WebSocket do STOMP' });
+          onLog({ type: 'ERROR', message: `Erro na conexão WebSocket do STOMP - Tentativa ${reconnectAttemptsRef.current + 1}/3` });
         },
         onDisconnect: () => {
           console.log('[STOMP] Desconectado');
