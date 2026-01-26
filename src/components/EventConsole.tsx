@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LogEntry, LogType } from '@/hooks/useWebSocket';
-import { Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { useState } from 'react';
 
 interface EventConsoleProps {
@@ -81,6 +81,35 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
     return `${time}.${ms}`;
   };
 
+  // Exportar logs para arquivo TXT
+  const exportLogs = () => {
+    if (logs.length === 0) return;
+
+    const content = logs.map((log) => {
+      const time = formatTime(log.timestamp);
+      let line = `[${time}] [${log.type}] ${log.message}`;
+      if (log.data) {
+        try {
+          const formatted = JSON.stringify(JSON.parse(log.data), null, 2);
+          line += `\n${formatted}`;
+        } catch {
+          line += `\n${log.data}`;
+        }
+      }
+      return line;
+    }).join('\n\n');
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `websocket-buddy-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="border border-border shadow-sm h-full flex flex-col">
       <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-0">
@@ -90,6 +119,17 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
             <Badge variant="outline" className="font-mono text-[10px] px-1.5">
               {logs.length}
             </Badge>
+            <Button
+              onClick={exportLogs}
+              variant="outline"
+              size="sm"
+              className="gap-1 h-7 px-2"
+              disabled={logs.length === 0}
+              title="Exportar logs"
+            >
+              <Download className="h-3 w-3" />
+              <span className="hidden sm:inline text-xs">Exportar</span>
+            </Button>
             <Button
               onClick={onClear}
               variant="outline"
