@@ -1,5 +1,5 @@
 /**
- * WebSocket Tester - Página Principal
+ * WebSocket Buddy - Página Principal
  * Ferramenta para testar e depurar conexões WebSocket e STOMP
  */
 import { useState, useCallback } from 'react';
@@ -55,7 +55,7 @@ const Index = () => {
               <Terminal className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
               <div className="min-w-0">
                 <h1 className="text-base sm:text-lg font-bold uppercase tracking-tight">
-                  WebSocket Tester
+                  WebSocket Buddy
                 </h1>
               </div>
             </div>
@@ -102,7 +102,7 @@ const Index = () => {
       <footer className="border-t border-border flex-shrink-0">
         <div className="container mx-auto px-2 sm:px-3 py-1.5 sm:py-2">
           <p className="text-[10px] sm:text-xs text-muted-foreground text-center">
-            WebSocket Tester • WebSocket & STOMP
+            WebSocket Buddy • <a target="_blank" href="https://perotedev.com">@perotedev</a>
           </p>
         </div>
       </footer>
