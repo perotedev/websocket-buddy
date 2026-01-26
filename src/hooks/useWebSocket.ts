@@ -319,7 +319,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
 
     setSubscribedTopics((prev) => prev.filter((t) => t.id !== id));
     if (topic) {
-      onLog({ type: 'UNSUBSCRIBE', message: `Desinscrito de: ${topic.destination}` });
+      onLog({ type: 'UNSUBSCRIBE', message: `Inscrição cancelada: ${topic.destination}` });
     }
   }, [connectionType, subscribedTopics, onLog]);
 

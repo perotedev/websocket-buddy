@@ -26,6 +26,21 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
     }
   }, [logs]);
 
+  // Auto-expandir logs do tipo MESSAGE
+  useEffect(() => {
+    const messageLogIds = logs
+      .filter((log) => log.type === 'MESSAGE' && log.data)
+      .map((log) => log.id);
+
+    if (messageLogIds.length > 0) {
+      setExpandedLogs((prev) => {
+        const next = new Set(prev);
+        messageLogIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  }, [logs]);
+
   // Toggle expansão de log com dados
   const toggleExpand = (id: string) => {
     setExpandedLogs((prev) => {
