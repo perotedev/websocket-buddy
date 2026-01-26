@@ -64,7 +64,7 @@ const Index = () => {
       <main className="container mx-auto px-2 sm:px-3 py-2 sm:py-3 flex-1 overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 h-full">
           {/* Coluna esquerda - Configuração e Controles */}
-          <div className="lg:col-span-4 flex flex-col gap-2 sm:gap-3 overflow-hidden">
+          <div className="lg:col-span-4 flex flex-col gap-2 sm:gap-3 min-h-0">
             {/* Painel de Conexão */}
             <div className="flex-shrink-0">
               <ConnectionPanel
@@ -75,7 +75,7 @@ const Index = () => {
             </div>
 
             {/* Painel de Ações (Inscrições e Mensagens com Tabs) */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0">
               <ActionPanel
                 subscribedTopics={subscribedTopics}
                 connectionType={connectionType}
