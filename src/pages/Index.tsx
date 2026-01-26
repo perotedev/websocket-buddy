@@ -5,8 +5,7 @@
 import { useState, useCallback } from 'react';
 import { useWebSocket, LogEntry, ConnectionType } from '@/hooks/useWebSocket';
 import { ConnectionPanel } from '@/components/ConnectionPanel';
-import { SubscriptionPanel } from '@/components/SubscriptionPanel';
-import { MessagePanel } from '@/components/MessagePanel';
+import { ActionPanel } from '@/components/ActionPanel';
 import { EventConsole } from '@/components/EventConsole';
 import { Terminal } from 'lucide-react';
 
@@ -65,29 +64,27 @@ const Index = () => {
       <main className="container mx-auto px-2 sm:px-3 py-2 sm:py-3 flex-1 overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 h-full">
           {/* Coluna esquerda - Configuração e Controles */}
-          <div className="lg:col-span-4 space-y-2 sm:space-y-3 overflow-y-auto">
+          <div className="lg:col-span-4 flex flex-col gap-2 sm:gap-3 overflow-hidden">
             {/* Painel de Conexão */}
-            <ConnectionPanel
-              status={status}
-              onConnect={connect}
-              onDisconnect={disconnect}
-            />
+            <div className="flex-shrink-0">
+              <ConnectionPanel
+                status={status}
+                onConnect={connect}
+                onDisconnect={disconnect}
+              />
+            </div>
 
-            {/* Painel de Inscrições */}
-            <SubscriptionPanel
-              subscribedTopics={subscribedTopics}
-              connectionType={connectionType}
-              isConnected={isConnected}
-              onSubscribe={subscribe}
-              onUnsubscribe={unsubscribe}
-            />
-
-            {/* Painel de Envio */}
-            <MessagePanel
-              connectionType={connectionType}
-              isConnected={isConnected}
-              onSendMessage={sendMessage}
-            />
+            {/* Painel de Ações (Inscrições e Mensagens com Tabs) */}
+            <div className="flex-1 overflow-hidden">
+              <ActionPanel
+                subscribedTopics={subscribedTopics}
+                connectionType={connectionType}
+                isConnected={isConnected}
+                onSubscribe={subscribe}
+                onUnsubscribe={unsubscribe}
+                onSendMessage={sendMessage}
+              />
+            </div>
           </div>
 
           {/* Coluna direita - Console */}

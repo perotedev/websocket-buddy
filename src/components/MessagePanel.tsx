@@ -64,100 +64,98 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
   };
 
   return (
-    <div className="border border-border p-2 sm:p-3 shadow-sm">
-      <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide mb-2">Enviar</h2>
+    <div className="h-full flex flex-col gap-2">
+      <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide flex-shrink-0">Enviar</h2>
 
-      <div className="space-y-2">
-        {/* Destino STOMP */}
-        {connectionType === 'stomp' && (
-          <div className="space-y-1">
-            <Label htmlFor="dest" className="text-xs font-medium uppercase">
-              Destino
-            </Label>
-            <Input
-              id="dest"
-              type="text"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder="/app/send"
-              disabled={!isConnected}
-              className="font-mono text-xs h-8"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Ex: /app/chat, /app/send, /app/message
-              <br />
-              Deve corresponder ao @MessageMapping do servidor
-            </p>
-          </div>
-        )}
-
-        {/* Campo de mensagem */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="message" className="text-xs font-medium uppercase">
-              Mensagem
-            </Label>
-            <Button
-              onClick={formatJson}
-              variant="ghost"
-              size="sm"
-              className="h-5 text-[10px] gap-1 px-1.5"
-            >
-              <Braces className="h-3 w-3" />
-              <span className="hidden sm:inline">JSON</span>
-            </Button>
-          </div>
-          <Textarea
-            id="message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder='{"type": "ping"}'
+      {/* Destino STOMP */}
+      {connectionType === 'stomp' && (
+        <div className="space-y-1 flex-shrink-0">
+          <Label htmlFor="dest" className="text-xs font-medium uppercase">
+            Destino
+          </Label>
+          <Input
+            id="dest"
+            type="text"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            placeholder="/app/send"
             disabled={!isConnected}
-            className="font-mono text-xs min-h-16 resize-none"
+            className="font-mono text-xs h-8"
           />
           <p className="text-[10px] text-muted-foreground">
-            Ctrl+Enter
+            Ex: /app/chat, /app/send, /app/message
+            <br />
+            Deve corresponder ao @MessageMapping do servidor
           </p>
         </div>
+      )}
 
-        {/* Headers STOMP (opcional) */}
-        {connectionType === 'stomp' && (
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => setShowHeaders(!showHeaders)}
-              className="text-xs text-muted-foreground hover:text-foreground underline"
-            >
-              {showHeaders ? 'Ocultar headers' : '+ Headers (opcional)'}
-            </button>
-            {showHeaders && (
-              <>
-                <Textarea
-                  value={headers}
-                  onChange={(e) => setHeaders(e.target.value)}
-                  placeholder='{"custom-header": "valor"}'
-                  disabled={!isConnected}
-                  className="font-mono text-xs min-h-12 resize-none"
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  Formato JSON. content-type é adicionado automaticamente
-                </p>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Botão de enviar */}
-        <Button
-          onClick={handleSend}
-          disabled={!isConnected || !message.trim()}
-          className="w-full gap-1.5 h-8 text-xs"
-        >
-          <Send className="h-3.5 w-3.5" />
-          Enviar
-        </Button>
+      {/* Campo de mensagem */}
+      <div className="flex-1 flex flex-col gap-1 min-h-0">
+        <div className="flex items-center justify-between flex-shrink-0">
+          <Label htmlFor="message" className="text-xs font-medium uppercase">
+            Mensagem
+          </Label>
+          <Button
+            onClick={formatJson}
+            variant="ghost"
+            size="sm"
+            className="h-5 text-[10px] gap-1 px-1.5"
+          >
+            <Braces className="h-3 w-3" />
+            <span className="hidden sm:inline">JSON</span>
+          </Button>
+        </div>
+        <Textarea
+          id="message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder='{"type": "ping"}'
+          disabled={!isConnected}
+          className="font-mono text-xs resize-none flex-1"
+        />
+        <p className="text-[10px] text-muted-foreground flex-shrink-0">
+          Ctrl+Enter
+        </p>
       </div>
+
+      {/* Headers STOMP (opcional) */}
+      {connectionType === 'stomp' && (
+        <div className="space-y-1 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowHeaders(!showHeaders)}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            {showHeaders ? 'Ocultar headers' : '+ Headers (opcional)'}
+          </button>
+          {showHeaders && (
+            <>
+              <Textarea
+                value={headers}
+                onChange={(e) => setHeaders(e.target.value)}
+                placeholder='{"custom-header": "valor"}'
+                disabled={!isConnected}
+                className="font-mono text-xs min-h-12 resize-none"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Formato JSON. content-type é adicionado automaticamente
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Botão de enviar */}
+      <Button
+        onClick={handleSend}
+        disabled={!isConnected || !message.trim()}
+        className="w-full gap-1.5 h-8 text-xs flex-shrink-0"
+      >
+        <Send className="h-3.5 w-3.5" />
+        Enviar
+      </Button>
     </div>
   );
 }

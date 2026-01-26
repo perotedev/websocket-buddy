@@ -44,77 +44,75 @@ export function SubscriptionPanel({
   };
 
   return (
-    <div className="border border-border p-2 sm:p-3 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
+    <div className="h-full flex flex-col gap-2">
+      <div className="flex items-center justify-between flex-shrink-0">
         <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Inscrições</h2>
         <Badge variant="outline" className="font-mono text-[10px] px-1.5">
           {subscribedTopics.length}
         </Badge>
       </div>
 
-      <div className="space-y-2">
-        {/* Campo para novo tópico */}
-        <div className="space-y-1">
-          <Label htmlFor="topic" className="text-xs font-medium uppercase">
-            {connectionType === 'stomp' ? 'Destino' : 'Canal'}
-          </Label>
-          <div className="flex gap-1.5">
-            <Input
-              id="topic"
-              type="text"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={connectionType === 'stomp' ? '/topic/messages' : 'canal-1'}
-              disabled={!isConnected}
-              className="font-mono text-xs flex-1 h-8"
-            />
-            <Button
-              onClick={handleSubscribe}
-              disabled={!isConnected || !destination.trim()}
-              size="icon"
-              className="flex-shrink-0 h-8 w-8"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+      {/* Campo para novo tópico */}
+      <div className="space-y-1 flex-shrink-0">
+        <Label htmlFor="topic" className="text-xs font-medium uppercase">
+          {connectionType === 'stomp' ? 'Destino' : 'Canal'}
+        </Label>
+        <div className="flex gap-1.5">
+          <Input
+            id="topic"
+            type="text"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={connectionType === 'stomp' ? '/topic/messages' : 'canal-1'}
+            disabled={!isConnected}
+            className="font-mono text-xs flex-1 h-8"
+          />
+          <Button
+            onClick={handleSubscribe}
+            disabled={!isConnected || !destination.trim()}
+            size="icon"
+            className="flex-shrink-0 h-8 w-8"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
         </div>
+      </div>
 
-        {/* Lista de tópicos inscritos */}
-        <div className="space-y-1">
-          <Label className="text-xs font-medium uppercase">Ativos</Label>
-          {subscribedTopics.length === 0 ? (
-            <div className="border border-dashed border-muted p-2 text-center text-muted-foreground text-xs">
-              Nenhuma inscrição
-            </div>
-          ) : (
-            <ScrollArea className="h-20 border border-border">
-              <div className="p-1.5 space-y-1">
-                {subscribedTopics.map((topic) => (
-                  <div
-                    key={topic.id}
-                    className="flex items-center justify-between bg-secondary p-1.5 border border-border"
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Radio className="h-2.5 w-2.5 text-green-500 flex-shrink-0" />
-                      <span className="font-mono text-xs truncate">
-                        {topic.destination}
-                      </span>
-                    </div>
-                    <Button
-                      onClick={() => onUnsubscribe(topic.id)}
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 flex-shrink-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
+      {/* Lista de tópicos inscritos */}
+      <div className="flex-1 flex flex-col gap-1 min-h-0">
+        <Label className="text-xs font-medium uppercase flex-shrink-0">Ativos</Label>
+        {subscribedTopics.length === 0 ? (
+          <div className="border border-dashed border-muted p-2 text-center text-muted-foreground text-xs flex-shrink-0">
+            Nenhuma inscrição
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 border border-border min-h-0">
+            <div className="p-1.5 space-y-1">
+              {subscribedTopics.map((topic) => (
+                <div
+                  key={topic.id}
+                  className="flex items-center justify-between bg-secondary p-1.5 border border-border"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Radio className="h-2.5 w-2.5 text-green-500 flex-shrink-0" />
+                    <span className="font-mono text-xs truncate">
+                      {topic.destination}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </div>
+                  <Button
+                    onClick={() => onUnsubscribe(topic.id)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 flex-shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
       </div>
     </div>
   );
