@@ -44,17 +44,22 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
   const wsRef = useRef<WebSocket | null>(null);
   const stompClientRef = useRef<Client | null>(null);
   const subscriptionsRef = useRef<Map<string, StompSubscription>>(new Map());
+  const authTokenRef = useRef<string | undefined>(undefined);
 
   /**
    * Conecta ao servidor WebSocket
    * @param url URL do servidor WebSocket
    * @param type Tipo de conexão (websocket puro ou STOMP)
+   * @param token Token de autenticação (opcional, apenas para STOMP)
    */
-  const connect = useCallback((url: string, type: ConnectionType) => {
+  const connect = useCallback((url: string, type: ConnectionType, token?: string) => {
     // Desconecta qualquer conexão existente
     disconnect();
     setConnectionType(type);
     setStatus('connecting');
+
+    // Armazena o token para uso nas mensagens
+    authTokenRef.current = token;
 
     if (type === 'websocket') {
       // Conexão WebSocket pura
@@ -94,38 +99,63 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       }
     } else {
       // Conexão STOMP sobre WebSocket
+      console.log('[STOMP] Iniciando conexão para:', url);
+
+      // Prepara headers de conexão
+      const connectHeaders: Record<string, string> = {};
+      if (token) {
+        // Adiciona "Bearer " automaticamente se não estiver presente
+        connectHeaders['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+        console.log('[STOMP] Token será enviado no frame CONNECT');
+      }
+
       const client = new Client({
-        brokerURL: url,
+        // Usa webSocketFactory ao invés de brokerURL (compatível com Spring Boot)
+        webSocketFactory: () => {
+          console.log('[STOMP] Criando WebSocket para:', url);
+          return new WebSocket(url);
+        },
+        // Headers enviados no frame CONNECT
+        connectHeaders,
         debug: (str) => {
           // Log de debug do STOMP (pode ser habilitado para depuração)
           console.log('[STOMP Debug]', str);
         },
-        reconnectDelay: 0, // Desabilita reconexão automática para controle manual
+        reconnectDelay: 5000, // 5 segundos para reconexão (como no Angular)
         heartbeatIncoming: 10000, // Heartbeat do servidor (10s)
         heartbeatOutgoing: 10000, // Heartbeat do cliente (10s)
-        onConnect: () => {
+        onConnect: (frame) => {
+          console.log('[STOMP] Conectado com sucesso!', frame);
           setStatus('connected');
           onLog({ type: 'INFO', message: `STOMP conectado ao servidor: ${url}` });
         },
         onStompError: (frame) => {
+          console.error('[STOMP Error Frame]', frame);
           setStatus('error');
           const errorMessage = frame.headers['message'] || 'Erro desconhecido';
           const errorDetails = Object.entries(frame.headers)
             .map(([key, value]) => `${key}: ${value}`)
             .join('\n');
 
+          // Detecta erro específico do servidor Spring
+          let helpText = '';
+          if (errorMessage.includes('ExecutorSubscribableChannel') || errorMessage.includes('clientInboundChannel')) {
+            helpText = '\n\n⚠️ POSSÍVEIS CAUSAS:\n' +
+              '1. Falta o header Authorization (configure o Token no painel de Conexão)\n' +
+              '2. Token inválido ou expirado\n' +
+              '3. Destino não existe no servidor (@MessageMapping)\n' +
+              '4. Formato JSON incorreto\n' +
+              '5. Campos obrigatórios ausentes no JSON';
+          }
+
           onLog({
             type: 'ERROR',
             message: `Erro STOMP: ${errorMessage}`,
-            data: `Headers:\n${errorDetails}\n\nBody:\n${frame.body || '(vazio)'}`
-          });
-
-          console.error('[STOMP Error]', {
-            headers: frame.headers,
-            body: frame.body
+            data: `Headers:\n${errorDetails}\n\nBody:\n${frame.body || '(vazio)'}${helpText}`
           });
         },
         onWebSocketClose: (event) => {
+          console.log('[STOMP] WebSocket fechado', event);
           setStatus('disconnected');
           onLog({
             type: 'INFO',
@@ -133,10 +163,12 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
           });
         },
         onWebSocketError: (event) => {
+          console.error('[STOMP] Erro no WebSocket', event);
           setStatus('error');
           onLog({ type: 'ERROR', message: 'Erro na conexão WebSocket do STOMP' });
         },
         onDisconnect: () => {
+          console.log('[STOMP] Desconectado');
           setStatus('disconnected');
           onLog({ type: 'INFO', message: 'STOMP desconectado' });
         }
@@ -145,9 +177,11 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       stompClientRef.current = client;
 
       try {
+        console.log('[STOMP] Ativando cliente...');
         client.activate();
         onLog({ type: 'INFO', message: 'Ativando cliente STOMP...' });
       } catch (error) {
+        console.error('[STOMP] Erro ao ativar:', error);
         setStatus('error');
         onLog({ type: 'ERROR', message: `Erro ao ativar cliente STOMP: ${error}` });
       }
@@ -158,12 +192,14 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
    * Desconecta do servidor
    */
   const disconnect = useCallback(() => {
+    console.log('[Disconnect] Iniciando desconexão...');
+
     // Limpa inscrições STOMP
     subscriptionsRef.current.forEach((sub) => {
       try {
         sub.unsubscribe();
       } catch (e) {
-        // Ignora erros ao desinscrever
+        console.warn('[Disconnect] Erro ao desinscrever:', e);
       }
     });
     subscriptionsRef.current.clear();
@@ -171,15 +207,24 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
 
     // Fecha WebSocket puro
     if (wsRef.current) {
+      console.log('[Disconnect] Fechando WebSocket puro...');
       wsRef.current.close();
       wsRef.current = null;
     }
 
     // Desativa cliente STOMP
     if (stompClientRef.current) {
-      stompClientRef.current.deactivate();
+      console.log('[Disconnect] Desativando cliente STOMP...');
+      try {
+        stompClientRef.current.deactivate();
+      } catch (e) {
+        console.warn('[Disconnect] Erro ao desativar STOMP:', e);
+      }
       stompClientRef.current = null;
     }
+
+    // Limpa o token de autenticação
+    authTokenRef.current = undefined;
 
     setStatus('disconnected');
   }, []);
@@ -297,10 +342,19 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       }
       // Envio via STOMP
       try {
-        // Só adiciona content-type se não foi especificado pelo usuário
+        // Prepara headers
         const finalHeaders = headers || {};
+
+        // Adiciona content-type se não foi especificado
         if (!finalHeaders['content-type'] && !finalHeaders['Content-Type']) {
           finalHeaders['content-type'] = 'application/json';
+        }
+
+        // Adiciona Authorization se tiver token configurado
+        if (authTokenRef.current && !finalHeaders['Authorization']) {
+          // Adiciona "Bearer " automaticamente se não estiver presente
+          const token = authTokenRef.current;
+          finalHeaders['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
         }
 
         // Log detalhado para debug

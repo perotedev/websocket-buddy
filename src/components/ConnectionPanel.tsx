@@ -12,7 +12,7 @@ import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2 } from 'lucide-react'
 
 interface ConnectionPanelProps {
   status: ConnectionStatus;
-  onConnect: (url: string, type: ConnectionType) => void;
+  onConnect: (url: string, type: ConnectionType, token?: string) => void;
   onDisconnect: () => void;
 }
 
@@ -20,11 +20,12 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
   // URL padrão para testes
   const [url, setUrl] = useState('');
   const [type, setType] = useState<ConnectionType>('websocket');
+  const [token, setToken] = useState('');
 
   // Handler para conectar
   const handleConnect = () => {
     if (url.trim()) {
-      onConnect(url.trim(), type);
+      onConnect(url.trim(), type, token.trim() || undefined);
     }
   };
 
@@ -87,10 +88,31 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="wss://seu-servidor.com/ws"
+            placeholder={type === 'stomp' ? 'ws://localhost:8080/ws' : 'wss://echo.websocket.org'}
             disabled={isConnected || isConnecting}
             className="font-mono text-xs h-8"
           />
+        </div>
+
+        {/* Token de Autenticação (ambos os tipos) */}
+        <div className="space-y-1">
+          <Label htmlFor="ws-token" className="text-xs font-medium uppercase">
+            Token de Autorização (Opcional) {type === 'websocket' && '(Opcional)'}
+          </Label>
+          <Input
+            id="ws-token"
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="seu_token_aqui"
+            disabled={isConnected || isConnecting}
+            className="font-mono text-xs h-8"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            {type === 'stomp'
+              ? '"Bearer" adicionado automaticamente.'
+              : 'Adicione à URL se necessário (ex: ?token=...)'}
+          </p>
         </div>
 
         {/* Tipo de conexão */}

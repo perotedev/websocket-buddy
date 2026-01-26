@@ -18,7 +18,7 @@ interface MessagePanelProps {
 
 export function MessagePanel({ connectionType, isConnected, onSendMessage }: MessagePanelProps) {
   const [message, setMessage] = useState('');
-  const [destination, setDestination] = useState('/app/send');
+  const [destination, setDestination] = useState('');
   const [headers, setHeaders] = useState('');
   const [showHeaders, setShowHeaders] = useState(false);
 
@@ -84,7 +84,9 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
               className="font-mono text-xs h-8"
             />
             <p className="text-[10px] text-muted-foreground">
-              Ex: /app/chat, /app/message, /queue/reply
+              Ex: /app/chat, /app/send, /app/message
+              <br />
+              Deve corresponder ao @MessageMapping do servidor
             </p>
           </div>
         )}
