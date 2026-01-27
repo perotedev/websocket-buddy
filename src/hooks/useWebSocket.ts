@@ -53,6 +53,9 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
   // Referência para timeout de conexão
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Flag para indicar que ocorreu timeout (evita logs duplicados)
+  const timeoutOccurredRef = useRef<boolean>(false);
+
   // Timeout de conexão em milissegundos (30 segundos)
   const CONNECTION_TIMEOUT = 30000;
 
@@ -158,10 +161,26 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
 
     // Configura timeout de conexão (30 segundos)
     clearConnectionTimeout();
+    timeoutOccurredRef.current = false; // Reseta flag de timeout
     connectionTimeoutRef.current = setTimeout(() => {
       console.log('[Timeout] Tempo limite de conexão atingido (30s)');
+      timeoutOccurredRef.current = true; // Marca que ocorreu timeout
       onLog({ type: 'ERROR', message: 'Tempo limite de conexão atingido (30 segundos)' });
-      cancelConnection();
+
+      // Fecha conexões diretamente sem chamar cancelConnection (evita log duplicado)
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (stompClientRef.current) {
+        try {
+          stompClientRef.current.deactivate();
+        } catch (e) {
+          console.warn('[Timeout] Erro ao desativar STOMP:', e);
+        }
+        stompClientRef.current = null;
+      }
+      setStatus('disconnected');
     }, CONNECTION_TIMEOUT);
 
     if (type === 'websocket') {
@@ -193,6 +212,15 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         ws.onclose = (event) => {
           clearConnectionTimeout();
           setStatus('disconnected');
+
+          // Se ocorreu timeout, não mostra log (já foi logado o erro de timeout)
+          if (timeoutOccurredRef.current) {
+            console.log('[WebSocket] Fechamento devido a timeout, ignorando log');
+            timeoutOccurredRef.current = false; // Reseta a flag
+            wsRef.current = null;
+            return;
+          }
+
           onLog({
             type: 'INFO',
             message: `Desconectado (código: ${event.code}, razão: ${event.reason || 'N/A'})`
@@ -282,6 +310,14 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         onWebSocketClose: (event) => {
           clearConnectionTimeout();
           console.log('[STOMP] WebSocket fechado', event);
+
+          // Se ocorreu timeout, não mostra log de tentativas (já foi logado o erro de timeout)
+          if (timeoutOccurredRef.current) {
+            console.log('[STOMP] Fechamento devido a timeout, ignorando log de tentativas');
+            timeoutOccurredRef.current = false; // Reseta a flag
+            return;
+          }
+
           reconnectAttemptsRef.current++; // Incrementa contador de tentativas
           console.log(`[STOMP] Tentativa de reconexão ${reconnectAttemptsRef.current}/3`);
           setStatus('disconnected');
@@ -316,7 +352,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         onLog({ type: 'ERROR', message: `Erro ao ativar cliente STOMP: ${error}` });
       }
     }
-  }, [onLog, disconnect, clearConnectionTimeout, cancelConnection]);
+  }, [onLog, disconnect, clearConnectionTimeout]);
 
   /**
    * Inscreve em um tópico/canal
