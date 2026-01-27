@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SubscribedTopic, ConnectionType } from "@/hooks/useWebSocket";
 import { Plus, X, Radio, Copy, Check } from "lucide-react";
@@ -68,15 +67,6 @@ export function SubscriptionPanel({
 
   return (
     <div className="h-full flex flex-col gap-2">
-      <div className="flex items-center justify-between flex-shrink-0">
-        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">
-          Inscrições
-        </h2>
-        <Badge variant="outline" className="font-mono text-[10px] px-1.5">
-          {subscribedTopics.length}
-        </Badge>
-      </div>
-
       {/* Campo para novo tópico */}
       <div className="space-y-1 flex-shrink-0">
         <Label htmlFor="topic" className="text-xs font-medium uppercase">

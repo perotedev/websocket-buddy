@@ -50,7 +50,8 @@ export function ActionPanel({
               className="text-xs sm:text-sm gap-1.5"
             >
               <Radio className="h-3 w-3 sm:h-4 sm:w-4" />
-              Inscrições
+              Inscrições{" "}
+              <span className="text-xs">({subscribedTopics.length})</span>
             </TabsTrigger>
             <TabsTrigger
               value="messages"
