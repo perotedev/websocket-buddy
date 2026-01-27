@@ -8,10 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConnectionType } from '@/hooks/useWebSocket';
+import { useTheme } from '@/hooks/useTheme';
 import { Send, FileText, Braces } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter } from '@codemirror/lint';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 interface MessagePanelProps {
   connectionType: ConnectionType;
@@ -22,6 +24,7 @@ interface MessagePanelProps {
 type MessageFormat = 'raw' | 'json';
 
 export function MessagePanel({ connectionType, isConnected, onSendMessage }: MessagePanelProps) {
+  const { theme } = useTheme();
   const [message, setMessage] = useState('');
   const [destination, setDestination] = useState('');
   const [headers, setHeaders] = useState('');
@@ -131,7 +134,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
             <CodeMirror
               value={message}
               onChange={(value) => setMessage(value)}
-              extensions={[json(), linter(jsonParseLinter())]}
+              extensions={[json(), linter(jsonParseLinter()), ...(theme === 'dark' ? [oneDark] : [])]}
               placeholder='{"type": "ping"}'
               height="100%"
               basicSetup={{
