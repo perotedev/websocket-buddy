@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LogEntry, LogType } from '@/hooks/useWebSocket';
-import { Trash2, ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronRight, Download, ArrowUp, ArrowDown, Info, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 
 interface EventConsoleProps {
@@ -83,6 +83,36 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
       }
     };
     return configs[type];
+  };
+
+  // Retorna o ícone de direção do fluxo baseado no tipo
+  const getDirectionIcon = (type: LogType) => {
+    // Mensagens recebidas (entrada/download)
+    if (type === 'MESSAGE') {
+      return <ArrowDown className="h-3 w-3 text-green-500 flex-shrink-0 mt-0.5 ml-1" />;
+    }
+    // Mensagens enviadas
+    if (type === 'SENT') {
+      return <ArrowUp className="h-3 w-3 text-purple-500 flex-shrink-0 mt-0.5 ml-1" />;
+    }
+    // Inscrição em tópico
+    if (type === 'SUBSCRIBE') {
+      return <ArrowUp className="h-3 w-3 text-blue-500 flex-shrink-0 mt-0.5 ml-1" />;
+    }
+    // Cancelamento de inscrição
+    if (type === 'UNSUBSCRIBE') {
+      return <ArrowUp className="h-3 w-3 text-orange-500 flex-shrink-0 mt-0.5 ml-1" />;
+    }
+    // Informação geral
+    if (type === 'INFO') {
+      return <Info className="h-3 w-3 text-slate-500 flex-shrink-0 mt-0.5 ml-1" />;
+    }
+    // Erro
+    if (type === 'ERROR') {
+      return <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0 mt-0.5 ml-1" />;
+    }
+    // Fallback
+    return <span className="w-3 flex-shrink-0 ml-1" />;
   };
 
   // Formatar timestamp
@@ -179,6 +209,9 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
                     className={`flex items-start gap-1.5 ${hasData ? 'cursor-pointer hover:bg-secondary/50' : ''}`}
                     onClick={() => hasData && toggleExpand(log.id)}
                   >
+                    {/* Ícone de direção do fluxo */}
+                    {getDirectionIcon(log.type)}
+
                     {/* Indicador de expansão */}
                     {hasData ? (
                       isExpanded ? (
