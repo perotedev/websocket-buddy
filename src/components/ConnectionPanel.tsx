@@ -234,7 +234,6 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
             </DialogHeader>
 
             <div className="space-y-3">
-              {/* Header Authorization (sempre visível se tiver token) */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">Authorization (Token)</Label>
                 <div className="flex gap-2">
@@ -250,7 +249,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Configure o token no campo acima. Não é possível editar aqui.
+                  Configure o token no campo abaixo da URL do websocket. Não é possível editar aqui.
                 </p>
               </div>
 
