@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ConnectionType } from '@/hooks/useWebSocket';
 import { Send, FileText, Braces } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
-import { json } from '@codemirror/lang-json';
+import { json, jsonParseLinter } from '@codemirror/lang-json';
+import { linter } from '@codemirror/lint';
 
 interface MessagePanelProps {
   connectionType: ConnectionType;
@@ -126,11 +127,11 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
             className="font-mono text-xs resize-none flex-1 min-h-0"
           />
         ) : (
-          <div className="flex-1 min-h-0 border border-border rounded-md overflow-hidden flex flex-col">
+          <div className={`flex-1 min-h-0 border border-border rounded-md overflow-hidden flex flex-col ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <CodeMirror
               value={message}
               onChange={(value) => setMessage(value)}
-              extensions={[json()]}
+              extensions={[json(), linter(jsonParseLinter())]}
               placeholder='{"type": "ping"}'
               height="100%"
               basicSetup={{
@@ -161,6 +162,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
               className="flex-1"
               style={{ fontSize: '12px' }}
               readOnly={!isConnected}
+              editable={isConnected}
             />
           </div>
         )}
