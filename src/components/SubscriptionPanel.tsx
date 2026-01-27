@@ -2,15 +2,15 @@
  * Painel de gerenciamento de inscrições em tópicos/canais
  * Permite inscrever-se em tópicos e gerenciar inscrições ativas
  */
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { SubscribedTopic, ConnectionType } from '@/hooks/useWebSocket';
-import { Plus, X, Radio, Copy, Check } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { SubscribedTopic, ConnectionType } from "@/hooks/useWebSocket";
+import { Plus, X, Radio, Copy, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface SubscriptionPanelProps {
   subscribedTopics: SubscribedTopic[];
@@ -25,9 +25,9 @@ export function SubscriptionPanel({
   connectionType,
   isConnected,
   onSubscribe,
-  onUnsubscribe
+  onUnsubscribe,
 }: SubscriptionPanelProps) {
-  const [destination, setDestination] = useState('');
+  const [destination, setDestination] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -35,13 +35,13 @@ export function SubscriptionPanel({
   const handleSubscribe = () => {
     if (destination.trim()) {
       onSubscribe(destination.trim());
-      setDestination('');
+      setDestination("");
     }
   };
 
   // Handler para tecla Enter
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSubscribe();
     }
   };
@@ -53,7 +53,7 @@ export function SubscriptionPanel({
       setCopiedId(topic.id);
       toast({
         title: "Copiado!",
-        description: "Destino copiado para área de transferência",
+        description: "Conteúdo copiado para área de transferência",
         duration: 2000,
       });
       setTimeout(() => setCopiedId(null), 2000);
@@ -69,7 +69,9 @@ export function SubscriptionPanel({
   return (
     <div className="h-full flex flex-col gap-2">
       <div className="flex items-center justify-between flex-shrink-0">
-        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Inscrições</h2>
+        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">
+          Inscrições
+        </h2>
         <Badge variant="outline" className="font-mono text-[10px] px-1.5">
           {subscribedTopics.length}
         </Badge>
@@ -78,7 +80,7 @@ export function SubscriptionPanel({
       {/* Campo para novo tópico */}
       <div className="space-y-1 flex-shrink-0">
         <Label htmlFor="topic" className="text-xs font-medium uppercase">
-          {connectionType === 'stomp' ? 'Destino' : 'Canal'}
+          {connectionType === "stomp" ? "Destino" : "Canal"}
         </Label>
         <div className="flex gap-1.5">
           <Input
@@ -87,7 +89,9 @@ export function SubscriptionPanel({
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={connectionType === 'stomp' ? '/topic/messages' : 'canal-1'}
+            placeholder={
+              connectionType === "stomp" ? "/topic/messages" : "canal-1"
+            }
             disabled={!isConnected}
             className="font-mono text-xs flex-1 h-8"
           />
@@ -104,7 +108,9 @@ export function SubscriptionPanel({
 
       {/* Lista de tópicos inscritos */}
       <div className="flex-1 flex flex-col gap-1 min-h-0 overflow-hidden">
-        <Label className="text-xs font-medium uppercase flex-shrink-0">Ativos</Label>
+        <Label className="text-xs font-medium uppercase flex-shrink-0">
+          Ativos
+        </Label>
         {subscribedTopics.length === 0 ? (
           <div className="border border-dashed border-muted p-2 text-center text-muted-foreground text-xs flex-shrink-0">
             Nenhuma inscrição
