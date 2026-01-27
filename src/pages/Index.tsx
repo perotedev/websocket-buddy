@@ -48,8 +48,8 @@ const Index = () => {
   const isConnected = status === 'connected';
   const isMobile = useIsMobile();
 
-  // Conteúdo do painel de configuração (conexão + ações)
-  const ConfigPanel = () => (
+  // Conteúdo do painel de configuração (conexão + ações) - inline para evitar re-mount
+  const configPanelContent = (
     <div className="flex flex-col gap-2 sm:gap-3 h-full">
       {/* Painel de Conexão */}
       <div className="flex-shrink-0">
@@ -99,7 +99,7 @@ const Index = () => {
         <Tabs defaultValue="config" className="flex-1 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-hidden">
             <TabsContent value="config" className="h-full m-0 px-2 py-2 overflow-auto">
-              <ConfigPanel />
+              {configPanelContent}
             </TabsContent>
             <TabsContent value="console" className="h-full m-0 px-2 py-2">
               <EventConsole logs={logs} onClear={clearLogs} />
@@ -133,7 +133,7 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 h-full">
               {/* Coluna esquerda - Configuração e Controles */}
               <div className="lg:col-span-4 flex flex-col gap-2 sm:gap-3 min-h-0">
-                <ConfigPanel />
+                {configPanelContent}
               </div>
 
               {/* Coluna direita - Console */}
