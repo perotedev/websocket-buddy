@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Perguntas e Discussões
+    url: https://github.com/perotedev/websocket-buddy/discussions
+    about: Use discussões para perguntas, ideias e conversas gerais
+  - name: Documentação
+    url: https://github.com/perotedev/websocket-buddy#readme
+    about: Consulte nossa documentação antes de abrir uma issue
