@@ -44,9 +44,6 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
         '.cm-cursor, .cm-dropCursor': {
           borderLeftColor: '#00ff00',
         },
-        '.cm-activeLine': {
-          backgroundColor: '#0d0d0d',
-        },
         '&.cm-focused .cm-selectionBackground': {
           backgroundColor: '#264f78 !important',
         },
@@ -59,13 +56,6 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
         },
         '&.cm-focused .cm-selectionLayer .cm-selectionBackground': {
           backgroundColor: '#264f78 !important',
-        },
-        '.cm-activeLine .cm-selectionBackground': {
-          backgroundColor: '#264f78 !important',
-        },
-        '.cm-activeLine ::selection': {
-          backgroundColor: '#264f78 !important',
-          color: 'inherit !important',
         },
         '.cm-gutters': {
           backgroundColor: '#1a1a1a',
@@ -91,7 +81,6 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
       caret: '#00ff00',
       selection: '#264f78',
       selectionMatch: '#264f78',
-      lineHighlight: '#0d0d0d',
       gutterBackground: '#1a1a1a',
       gutterForeground: '#858585',
       gutterBorder: '#333333',
@@ -244,7 +233,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
                 autocompletion: true,
                 rectangularSelection: true,
                 crosshairCursor: true,
-                highlightActiveLine: true,
+                highlightActiveLine: false,
                 highlightSelectionMatches: true,
                 closeBracketsKeymap: true,
                 defaultKeymap: true,
