@@ -17,6 +17,8 @@ import { tags as t } from "@lezer/highlight";
 import { createTheme } from "@uiw/codemirror-themes";
 import { EditorView } from "@codemirror/view";
 
+type MessageFormat = "raw" | "json";
+
 interface MessagePanelProps {
   connectionType: ConnectionType;
   isConnected: boolean;
@@ -25,14 +27,28 @@ interface MessagePanelProps {
     destination?: string,
     headers?: Record<string, string>,
   ) => void;
+  message: string;
+  setMessage: (message: string) => void;
+  destination: string;
+  setDestination: (destination: string) => void;
+  headers: string;
+  setHeaders: (headers: string) => void;
+  messageFormat: MessageFormat;
+  setMessageFormat: (format: MessageFormat) => void;
 }
-
-type MessageFormat = "raw" | "json";
 
 export function MessagePanel({
   connectionType,
   isConnected,
   onSendMessage,
+  message,
+  setMessage,
+  destination,
+  setDestination,
+  headers,
+  setHeaders,
+  messageFormat,
+  setMessageFormat,
 }: MessagePanelProps) {
   const { theme } = useTheme();
   const [editorKey, setEditorKey] = useState(0);
@@ -141,11 +157,8 @@ export function MessagePanel({
       }),
     [theme],
   );
-  const [message, setMessage] = useState("");
-  const [destination, setDestination] = useState("");
-  const [headers, setHeaders] = useState("");
+
   const [showHeaders, setShowHeaders] = useState(false);
-  const [messageFormat, setMessageFormat] = useState<MessageFormat>("json");
 
   // Handler para enviar mensagem
   const handleSend = () => {
@@ -200,8 +213,6 @@ export function MessagePanel({
             className="font-mono text-xs h-8"
           />
           <p className="text-[10px] text-muted-foreground">
-            Ex: /app/chat, /app/send, /app/message
-            <br />
             Deve corresponder ao @MessageMapping do servidor
           </p>
         </div>

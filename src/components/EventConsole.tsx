@@ -2,13 +2,12 @@
  * Console de eventos e mensagens
  * Exibe logs em tempo real com timestamps e tipos
  */
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { LogEntry, LogType } from '@/hooks/useWebSocket';
-import { Trash2, ChevronDown, ChevronRight, Download, ArrowUp, ArrowDown, Info, AlertTriangle } from 'lucide-react';
-import { useState } from 'react';
+import { Trash2, ChevronDown, ChevronRight, Download, ArrowUp, ArrowDown, Info, AlertTriangle, Copy, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface EventConsoleProps {
   logs: LogEntry[];
@@ -18,13 +17,22 @@ interface EventConsoleProps {
 export function EventConsole({ logs, onClear }: EventConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Auto-scroll para o final quando novos logs são adicionados
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Delay de 100ms para garantir que o DOM foi atualizado
+      const timer = setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
-  }, [logs]);
+  }, [logs.length]);
 
   // Auto-expandir logs do tipo MESSAGE
   useEffect(() => {
@@ -52,6 +60,25 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
       }
       return next;
     });
+  };
+
+  // Copiar dados do log
+  const copyLogData = async (logId: string, data: string) => {
+    try {
+      await navigator.clipboard.writeText(data);
+      setCopiedId(logId);
+      toast({
+        title: "Copiado",
+        description: "Conteúdo copiado para a área de transferência",
+      });
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o conteúdo",
+        variant: "destructive",
+      });
+    }
   };
 
   // Configuração visual por tipo de log
@@ -188,10 +215,7 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
         </div>
 
         {/* Área de logs */}
-        <ScrollArea
-          className="flex-1 border border-border bg-secondary/30 min-h-0"
-          ref={scrollRef}
-        >
+        <div className="flex-1 border border-border bg-secondary/30 min-h-0 overflow-auto" ref={scrollRef}>
         <div className="p-1.5 space-y-0.5 font-mono text-xs">
           {logs.length === 0 ? (
             <div className="text-center text-muted-foreground py-4 text-xs">
@@ -239,8 +263,25 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
 
                   {/* Dados expandidos */}
                   {hasData && isExpanded && (
-                    <div className="ml-3 sm:ml-4 mt-1 p-1.5 bg-background border border-border overflow-x-auto">
-                      <pre className="text-[9px] whitespace-pre-wrap break-all">
+                    <div className="ml-3 sm:ml-4 mt-1 p-1.5 bg-background border border-border overflow-x-auto relative">
+                      {/* Botão de copiar conteúdo */}
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyLogData(log.id, log.data!);
+                        }}
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6"
+                        title="Copiar conteúdo"
+                      >
+                        {copiedId === log.id ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <pre className="text-[9px] whitespace-pre-wrap break-all pr-8">
                         {(() => {
                           try {
                             return JSON.stringify(JSON.parse(log.data!), null, 2);
@@ -256,7 +297,7 @@ export function EventConsole({ logs, onClear }: EventConsoleProps) {
             })
           )}
         </div>
-      </ScrollArea>
+      </div>
       </div>
     </div>
   );
