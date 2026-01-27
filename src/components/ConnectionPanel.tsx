@@ -108,13 +108,6 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
   // Verifica se um header está vazio (para estilização)
   const isHeaderEmpty = (header: CustomHeader) => header.key === '' && header.value === '';
 
-  // Máscara para exibir valor oculto
-  const maskValue = (value: string) => {
-    if (!value) return '(vazio)';
-    if (value.length <= 4) return '••••';
-    return '••••' + value.slice(-4);
-  };
-
   // Indicador de status visual
   const StatusIndicator = () => {
     const statusConfig = {
@@ -251,7 +244,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
                     className="font-mono text-xs h-8 w-44 bg-muted"
                   />
                   <Input
-                    value={token ? maskValue(`Bearer ${token}`) : '(não configurado)'}
+                    value={token ? '••••••••••••' : '(não configurado)'}
                     disabled
                     className="font-mono text-xs h-8 flex-1 bg-muted"
                   />
@@ -267,35 +260,33 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
                 {customHeaders.map((header) => {
                   const isEmpty = isHeaderEmpty(header);
                   return (
-                    <div key={header.id} className="flex gap-2 items-center">
+                    <div key={header.id} className={`flex gap-2 items-center group ${isEmpty ? '[&:hover_input]:border-input' : ''}`}>
                       <Input
                         value={header.key}
                         placeholder="Nome"
                         onChange={(e) => handleUpdateHeader(header.id, 'key', e.target.value)}
                         disabled={isConnected || isConnecting}
-                        className={`font-mono text-xs h-8 w-44 ${isEmpty ? 'text-muted-foreground/50 placeholder:text-muted-foreground/50' : ''}`}
+                        className={`font-mono text-xs h-8 w-44 transition-colors ${isEmpty ? 'text-muted-foreground/50 placeholder:text-muted-foreground/50 border-muted-foreground/30' : ''}`}
                       />
-                      <Input
-                        value={header.value}
-                        placeholder="Valor"
-                        onChange={(e) => handleUpdateHeader(header.id, 'value', e.target.value)}
-                        disabled={isConnected || isConnecting}
-                        className={`font-mono text-xs h-8 flex-1 ${isEmpty ? 'text-muted-foreground/50 placeholder:text-muted-foreground/50' : ''}`}
-                        type={isEmpty ? 'text' : 'password'}
-                      />
-                      {!isEmpty ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveHeader(header.id)}
+                      <div className="relative flex-1">
+                        <Input
+                          value={header.value}
+                          placeholder="Valor"
+                          onChange={(e) => handleUpdateHeader(header.id, 'value', e.target.value)}
                           disabled={isConnected || isConnecting}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      ) : (
-                        <div className="w-8" />
-                      )}
+                          className={`font-mono text-xs h-8 w-full transition-colors ${isEmpty ? 'text-muted-foreground/50 placeholder:text-muted-foreground/50 border-muted-foreground/30' : 'pr-8'}`}
+                          type={isEmpty ? 'text' : 'password'}
+                        />
+                        {!isEmpty && !isConnected && !isConnecting && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveHeader(header.id)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
