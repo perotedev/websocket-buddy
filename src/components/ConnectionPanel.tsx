@@ -184,7 +184,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
               Token de Autorização {type === 'websocket' && '(Opcional)'}
             </Label>
             {/* Headers Customizados */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 h-5">
               <button
                 type="button"
                 onClick={() => setHeadersDialogOpen(true)}
