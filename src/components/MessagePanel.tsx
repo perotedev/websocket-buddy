@@ -29,48 +29,59 @@ type MessageFormat = 'raw' | 'json';
 export function MessagePanel({ connectionType, isConnected, onSendMessage }: MessagePanelProps) {
   const { theme } = useTheme();
 
-  // Extensões do editor incluindo estilos customizados
-  const editorExtensions = useMemo(() => {
-    const baseExtensions = [
-      json(),
-      linter(jsonParseLinter()),
-      EditorView.theme({
-        '&': {
-          backgroundColor: '#000000',
-        },
-        '.cm-content': {
-          caretColor: '#00ff00',
-        },
-        '.cm-cursor, .cm-dropCursor': {
-          borderLeftColor: '#00ff00',
-        },
-        '&.cm-focused .cm-selectionBackground': {
-          backgroundColor: '#264f78 !important',
-        },
-        '.cm-selectionBackground': {
-          backgroundColor: '#264f78 !important',
-        },
-        '.cm-line ::selection': {
-          backgroundColor: '#264f78 !important',
-          color: 'inherit !important',
-        },
-        '&.cm-focused .cm-selectionLayer .cm-selectionBackground': {
-          backgroundColor: '#264f78 !important',
-        },
-        '.cm-gutters': {
-          backgroundColor: '#1a1a1a',
-          color: '#858585',
-          border: 'none',
-          borderRight: '1px solid #333333',
-        },
-        '.cm-activeLineGutter': {
-          backgroundColor: '#1a1a1a',
-          color: '#ffffff',
-        },
-      }, { dark: true })
-    ];
-    return baseExtensions;
-  }, []);
+  // Extensões do editor para modo dark
+  const darkExtensions = useMemo(() => [
+    json(),
+    linter(jsonParseLinter()),
+    EditorView.theme({
+      '&': {
+        backgroundColor: '#000000',
+      },
+      '.cm-content': {
+        caretColor: '#00ff00',
+      },
+      '.cm-cursor, .cm-dropCursor': {
+        borderLeftColor: '#00ff00',
+      },
+      '&.cm-focused .cm-selectionBackground': {
+        backgroundColor: '#264f78 !important',
+      },
+      '.cm-selectionBackground': {
+        backgroundColor: '#264f78 !important',
+      },
+      '.cm-line ::selection': {
+        backgroundColor: '#264f78 !important',
+        color: 'inherit !important',
+      },
+      '&.cm-focused .cm-selectionLayer .cm-selectionBackground': {
+        backgroundColor: '#264f78 !important',
+      },
+      '.cm-gutters': {
+        backgroundColor: '#1a1a1a',
+        color: '#858585',
+        border: 'none',
+        borderRight: '1px solid #333333',
+      },
+      '.cm-activeLineGutter': {
+        backgroundColor: '#2a2a2a',
+        color: '#ffffff',
+        fontWeight: 'bold',
+      },
+    }, { dark: true })
+  ], []);
+
+  // Extensões do editor para modo light
+  const lightExtensions = useMemo(() => [
+    json(),
+    linter(jsonParseLinter()),
+    EditorView.theme({
+      '.cm-activeLineGutter': {
+        backgroundColor: '#e0e0e0',
+        color: '#000000',
+        fontWeight: 'bold',
+      },
+    })
+  ], []);
 
   // Tema dark customizado com fundo totalmente preto
   const blackTheme = useMemo(() => createTheme({
@@ -214,7 +225,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
               key={theme}
               value={message}
               onChange={(value) => setMessage(value)}
-              extensions={theme === 'dark' ? editorExtensions : [json(), linter(jsonParseLinter())]}
+              extensions={theme === 'dark' ? darkExtensions : lightExtensions}
               theme={theme === 'dark' ? blackTheme : 'light'}
               placeholder='{"type": "ping"}'
               height="100%"
