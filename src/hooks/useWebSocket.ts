@@ -47,13 +47,17 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
   const authTokenRef = useRef<string | undefined>(undefined);
   const reconnectAttemptsRef = useRef<number>(0);
 
+  // Referência para headers customizados
+  const customHeadersRef = useRef<Record<string, string>>({});
+
   /**
    * Conecta ao servidor WebSocket
    * @param url URL do servidor WebSocket
    * @param type Tipo de conexão (websocket puro ou STOMP)
    * @param token Token de autenticação (opcional, apenas para STOMP)
+   * @param customHeaders Headers customizados (opcional, apenas para STOMP)
    */
-  const connect = useCallback((url: string, type: ConnectionType, token?: string) => {
+  const connect = useCallback((url: string, type: ConnectionType, token?: string, customHeaders?: Record<string, string>) => {
     // Desconecta qualquer conexão existente
     disconnect();
     setConnectionType(type);
@@ -62,8 +66,9 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
     // Reseta contador de tentativas de reconexão ao iniciar nova conexão
     reconnectAttemptsRef.current = 0;
 
-    // Armazena o token para uso nas mensagens
+    // Armazena o token e headers customizados para uso nas mensagens
     authTokenRef.current = token;
+    customHeadersRef.current = customHeaders || {};
 
     if (type === 'websocket') {
       // Conexão WebSocket pura
@@ -106,11 +111,14 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       console.log('[STOMP] Iniciando conexão para:', url);
 
       // Prepara headers de conexão
-      const connectHeaders: Record<string, string> = {};
+      const connectHeaders: Record<string, string> = { ...customHeadersRef.current };
       if (token) {
         // Adiciona "Bearer " automaticamente se não estiver presente
         connectHeaders['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
         console.log('[STOMP] Token será enviado no frame CONNECT');
+      }
+      if (Object.keys(connectHeaders).length > 0) {
+        console.log('[STOMP] Headers de conexão:', Object.keys(connectHeaders));
       }
 
       const client = new Client({
@@ -242,8 +250,9 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       stompClientRef.current = null;
     }
 
-    // Limpa o token de autenticação
+    // Limpa o token de autenticação e headers customizados
     authTokenRef.current = undefined;
+    customHeadersRef.current = {};
 
     setStatus('disconnected');
   }, []);
@@ -361,8 +370,8 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       }
       // Envio via STOMP
       try {
-        // Prepara headers
-        const finalHeaders = headers || {};
+        // Prepara headers (combina headers customizados com headers específicos da mensagem)
+        const finalHeaders = { ...customHeadersRef.current, ...headers };
 
         // Adiciona content-type se não foi especificado
         if (!finalHeaders['content-type'] && !finalHeaders['Content-Type']) {
