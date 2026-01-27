@@ -37,16 +37,16 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
   const [type, setType] = useState<ConnectionType>('websocket');
   const [token, setToken] = useState('');
 
-  // Estado para headers customizados
-  const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([]);
+  // Estado para headers customizados (sempre com uma linha vazia no final)
+  const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([
+    { id: crypto.randomUUID(), key: '', value: '' }
+  ]);
   const [headersDialogOpen, setHeadersDialogOpen] = useState(false);
-  const [newHeaderKey, setNewHeaderKey] = useState('');
-  const [newHeaderValue, setNewHeaderValue] = useState('');
 
   // Handler para conectar
   const handleConnect = () => {
     if (url.trim()) {
-      // Converte array de headers para objeto
+      // Converte array de headers para objeto (ignora linhas vazias)
       const headersObj = customHeaders.reduce((acc, header) => {
         if (header.key.trim()) {
           acc[header.key.trim()] = header.value;
@@ -59,29 +59,54 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
     }
   };
 
-  // Adicionar novo header
-  const handleAddHeader = () => {
-    const keyTrimmed = newHeaderKey.trim();
-    if (!keyTrimmed) return;
+  // Atualizar header e gerenciar linhas automaticamente
+  const handleUpdateHeader = (id: string, field: 'key' | 'value', newValue: string) => {
+    // Não permite mudar key para Authorization
+    if (field === 'key' && newValue.trim().toLowerCase() === 'authorization') return;
 
-    // Não permite adicionar Authorization (já existe via token)
-    if (keyTrimmed.toLowerCase() === 'authorization') return;
+    setCustomHeaders((prev) => {
+      // Atualiza o header
+      let updated = prev.map((h) => (h.id === id ? { ...h, [field]: newValue } : h));
 
-    // Não permite duplicados
-    if (customHeaders.some((h) => h.key.toLowerCase() === keyTrimmed.toLowerCase())) return;
+      // Se o último header não está mais vazio, adiciona uma nova linha vazia
+      const lastHeader = updated[updated.length - 1];
+      if (lastHeader && (lastHeader.key !== '' || lastHeader.value !== '')) {
+        updated = [...updated, { id: crypto.randomUUID(), key: '', value: '' }];
+      }
 
-    setCustomHeaders((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), key: keyTrimmed, value: newHeaderValue }
-    ]);
-    setNewHeaderKey('');
-    setNewHeaderValue('');
+      // Remove linhas vazias do meio (mantém apenas a última vazia)
+      updated = updated.filter((h, index) => {
+        const isLast = index === updated.length - 1;
+        const isEmpty = h.key === '' && h.value === '';
+        // Mantém se não está vazia OU se é a última
+        return !isEmpty || isLast;
+      });
+
+      // Garante que sempre tenha pelo menos uma linha vazia
+      const hasEmptyRow = updated.some((h) => h.key === '' && h.value === '');
+      if (!hasEmptyRow) {
+        updated = [...updated, { id: crypto.randomUUID(), key: '', value: '' }];
+      }
+
+      return updated;
+    });
   };
 
-  // Remover header
+  // Remover header manualmente
   const handleRemoveHeader = (id: string) => {
-    setCustomHeaders((prev) => prev.filter((h) => h.id !== id));
+    setCustomHeaders((prev) => {
+      const filtered = prev.filter((h) => h.id !== id);
+      // Garante que sempre tenha pelo menos uma linha vazia
+      const hasEmptyRow = filtered.some((h) => h.key === '' && h.value === '');
+      if (!hasEmptyRow || filtered.length === 0) {
+        return [...filtered, { id: crypto.randomUUID(), key: '', value: '' }];
+      }
+      return filtered;
+    });
   };
+
+  // Verifica se um header está vazio (para estilização)
+  const isHeaderEmpty = (header: CustomHeader) => header.key === '' && header.value === '';
 
   // Máscara para exibir valor oculto
   const maskValue = (value: string) => {
@@ -176,13 +201,13 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
                 <Plus className="h-3 w-3" />
                 <span>Headers</span>
               </button>
-              {customHeaders.length > 0 && (
+              {customHeaders.filter((h) => h.key !== '' || h.value !== '').length > 0 && (
                 <Badge
                   variant="secondary"
                   className="text-[10px] px-1.5 cursor-pointer hover:bg-secondary/80"
                   onClick={() => !isConnected && !isConnecting && setHeadersDialogOpen(true)}
                 >
-                  +{customHeaders.length}
+                  +{customHeaders.filter((h) => h.key !== '' || h.value !== '').length}
                 </Badge>
               )}
             </div>
@@ -205,7 +230,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
 
         {/* Dialog de Headers */}
         <Dialog open={headersDialogOpen} onOpenChange={setHeadersDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-[488px]">
             <DialogHeader>
               <DialogTitle className="text-sm uppercase">Headers de Conexão</DialogTitle>
               <DialogDescription className="text-xs">
@@ -223,12 +248,12 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
                   <Input
                     value="Authorization"
                     disabled
-                    className="font-mono text-xs h-8 flex-1 bg-muted"
+                    className="font-mono text-xs h-8 w-44 bg-muted"
                   />
                   <Input
                     value={token ? maskValue(`Bearer ${token}`) : '(não configurado)'}
                     disabled
-                    className="font-mono text-xs h-8 flex-[2] bg-muted"
+                    className="font-mono text-xs h-8 flex-1 bg-muted"
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
@@ -237,69 +262,44 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
               </div>
 
               {/* Lista de headers customizados */}
-              {customHeaders.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Headers Customizados</Label>
-                  {customHeaders.map((header) => (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Headers Customizados</Label>
+                {customHeaders.map((header) => {
+                  const isEmpty = isHeaderEmpty(header);
+                  return (
                     <div key={header.id} className="flex gap-2 items-center">
                       <Input
                         value={header.key}
-                        disabled
-                        className="font-mono text-xs h-8 flex-1"
+                        placeholder="Nome"
+                        onChange={(e) => handleUpdateHeader(header.id, 'key', e.target.value)}
+                        disabled={isConnected || isConnecting}
+                        className={`font-mono text-xs h-8 w-44 ${isEmpty ? 'text-muted-foreground/50 placeholder:text-muted-foreground/50' : ''}`}
                       />
                       <Input
-                        value={maskValue(header.value)}
-                        disabled
-                        className="font-mono text-xs h-8 flex-[2]"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveHeader(header.id)}
+                        value={header.value}
+                        placeholder="Valor"
+                        onChange={(e) => handleUpdateHeader(header.id, 'value', e.target.value)}
                         disabled={isConnected || isConnecting}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                        className={`font-mono text-xs h-8 flex-1 ${isEmpty ? 'text-muted-foreground/50 placeholder:text-muted-foreground/50' : ''}`}
+                        type={isEmpty ? 'text' : 'password'}
+                      />
+                      {!isEmpty ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveHeader(header.id)}
+                          disabled={isConnected || isConnecting}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      ) : (
+                        <div className="w-8" />
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Adicionar novo header */}
-              {!isConnected && !isConnecting && (
-                <div className="space-y-2 pt-2 border-t">
-                  <Label className="text-xs font-medium">Adicionar Header</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Nome"
-                      value={newHeaderKey}
-                      onChange={(e) => setNewHeaderKey(e.target.value)}
-                      className="font-mono text-xs h-8 flex-1"
-                    />
-                    <Input
-                      placeholder="Valor"
-                      value={newHeaderValue}
-                      onChange={(e) => setNewHeaderValue(e.target.value)}
-                      className="font-mono text-xs h-8 flex-[2]"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddHeader}
-                      disabled={!newHeaderKey.trim() || newHeaderKey.trim().toLowerCase() === 'authorization'}
-                      className="h-8 px-3"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  {newHeaderKey.trim().toLowerCase() === 'authorization' && (
-                    <p className="text-[10px] text-destructive">
-                      Use o campo Token para configurar Authorization.
-                    </p>
-                  )}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
