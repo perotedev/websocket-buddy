@@ -50,6 +50,92 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
   // Referência para headers customizados
   const customHeadersRef = useRef<Record<string, string>>({});
 
+  // Referência para timeout de conexão
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Timeout de conexão em milissegundos (30 segundos)
+  const CONNECTION_TIMEOUT = 30000;
+
+  /**
+   * Limpa o timeout de conexão
+   */
+  const clearConnectionTimeout = useCallback(() => {
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Desconecta do servidor
+   */
+  const disconnect = useCallback(() => {
+    console.log('[Disconnect] Iniciando desconexão...');
+    clearConnectionTimeout();
+
+    // Limpa inscrições STOMP
+    subscriptionsRef.current.forEach((sub) => {
+      try {
+        sub.unsubscribe();
+      } catch (e) {
+        console.warn('[Disconnect] Erro ao desinscrever:', e);
+      }
+    });
+    subscriptionsRef.current.clear();
+    setSubscribedTopics([]);
+
+    // Fecha WebSocket puro
+    if (wsRef.current) {
+      console.log('[Disconnect] Fechando WebSocket...');
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Desativa cliente STOMP
+    if (stompClientRef.current) {
+      console.log('[Disconnect] Desativando cliente STOMP...');
+      try {
+        stompClientRef.current.deactivate();
+      } catch (e) {
+        console.warn('[Disconnect] Erro ao desativar STOMP:', e);
+      }
+      stompClientRef.current = null;
+    }
+
+    // Limpa o token de autenticação e headers customizados
+    authTokenRef.current = undefined;
+    customHeadersRef.current = {};
+
+    setStatus('disconnected');
+  }, [clearConnectionTimeout]);
+
+  /**
+   * Cancela uma tentativa de conexão em andamento
+   */
+  const cancelConnection = useCallback(() => {
+    console.log('[Cancel] Cancelando tentativa de conexão...');
+    clearConnectionTimeout();
+
+    // Fecha WebSocket puro se estiver tentando conectar
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Desativa cliente STOMP se estiver tentando conectar
+    if (stompClientRef.current) {
+      try {
+        stompClientRef.current.deactivate();
+      } catch (e) {
+        console.warn('[Cancel] Erro ao desativar STOMP:', e);
+      }
+      stompClientRef.current = null;
+    }
+
+    setStatus('disconnected');
+    onLog({ type: 'INFO', message: 'Tentativa de conexão cancelada pelo usuário' });
+  }, [onLog, clearConnectionTimeout]);
+
   /**
    * Conecta ao servidor WebSocket
    * @param url URL do servidor WebSocket
@@ -70,6 +156,14 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
     authTokenRef.current = token;
     customHeadersRef.current = customHeaders || {};
 
+    // Configura timeout de conexão (30 segundos)
+    clearConnectionTimeout();
+    connectionTimeoutRef.current = setTimeout(() => {
+      console.log('[Timeout] Tempo limite de conexão atingido (30s)');
+      onLog({ type: 'ERROR', message: 'Tempo limite de conexão atingido (30 segundos)' });
+      cancelConnection();
+    }, CONNECTION_TIMEOUT);
+
     if (type === 'websocket') {
       // Conexão WebSocket pura
       try {
@@ -77,32 +171,36 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         wsRef.current = ws;
 
         ws.onopen = () => {
+          clearConnectionTimeout();
           setStatus('connected');
           onLog({ type: 'INFO', message: `Conectado ao servidor: ${url}` });
         };
 
         ws.onmessage = (event) => {
-          onLog({ 
-            type: 'MESSAGE', 
+          onLog({
+            type: 'MESSAGE',
             message: 'Mensagem recebida',
             data: typeof event.data === 'string' ? event.data : JSON.stringify(event.data)
           });
         };
 
-        ws.onerror = (error) => {
+        ws.onerror = () => {
+          clearConnectionTimeout();
           setStatus('error');
           onLog({ type: 'ERROR', message: 'Erro na conexão WebSocket' });
         };
 
         ws.onclose = (event) => {
+          clearConnectionTimeout();
           setStatus('disconnected');
-          onLog({ 
-            type: 'INFO', 
+          onLog({
+            type: 'INFO',
             message: `Desconectado (código: ${event.code}, razão: ${event.reason || 'N/A'})`
           });
           wsRef.current = null;
         };
       } catch (error) {
+        clearConnectionTimeout();
         setStatus('error');
         onLog({ type: 'ERROR', message: `Erro ao conectar: ${error}` });
       }
@@ -149,12 +247,14 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
           return Promise.resolve();
         },
         onConnect: (frame) => {
+          clearConnectionTimeout();
           console.log('[STOMP] Conectado com sucesso!', frame);
           reconnectAttemptsRef.current = 0; // Reseta contador ao conectar com sucesso
           setStatus('connected');
           onLog({ type: 'INFO', message: `STOMP conectado ao servidor: ${url}` });
         },
         onStompError: (frame) => {
+          clearConnectionTimeout();
           console.error('[STOMP Error Frame]', frame);
           setStatus('error');
           const errorMessage = frame.headers['message'] || 'Erro desconhecido';
@@ -180,6 +280,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
           });
         },
         onWebSocketClose: (event) => {
+          clearConnectionTimeout();
           console.log('[STOMP] WebSocket fechado', event);
           reconnectAttemptsRef.current++; // Incrementa contador de tentativas
           console.log(`[STOMP] Tentativa de reconexão ${reconnectAttemptsRef.current}/3`);
@@ -190,6 +291,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
           });
         },
         onWebSocketError: (event) => {
+          clearConnectionTimeout();
           console.error('[STOMP] Erro no WebSocket', event);
           setStatus('error');
           onLog({ type: 'ERROR', message: `Erro na conexão WebSocket do STOMP - Tentativa ${reconnectAttemptsRef.current + 1}/3` });
@@ -208,54 +310,13 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
         client.activate();
         onLog({ type: 'INFO', message: 'Ativando cliente STOMP...' });
       } catch (error) {
+        clearConnectionTimeout();
         console.error('[STOMP] Erro ao ativar:', error);
         setStatus('error');
         onLog({ type: 'ERROR', message: `Erro ao ativar cliente STOMP: ${error}` });
       }
     }
-  }, [onLog]);
-
-  /**
-   * Desconecta do servidor
-   */
-  const disconnect = useCallback(() => {
-    console.log('[Disconnect] Iniciando desconexão...');
-
-    // Limpa inscrições STOMP
-    subscriptionsRef.current.forEach((sub) => {
-      try {
-        sub.unsubscribe();
-      } catch (e) {
-        console.warn('[Disconnect] Erro ao desinscrever:', e);
-      }
-    });
-    subscriptionsRef.current.clear();
-    setSubscribedTopics([]);
-
-    // Fecha WebSocket puro
-    if (wsRef.current) {
-      console.log('[Disconnect] Fechando WebSocket...');
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    // Desativa cliente STOMP
-    if (stompClientRef.current) {
-      console.log('[Disconnect] Desativando cliente STOMP...');
-      try {
-        stompClientRef.current.deactivate();
-      } catch (e) {
-        console.warn('[Disconnect] Erro ao desativar STOMP:', e);
-      }
-      stompClientRef.current = null;
-    }
-
-    // Limpa o token de autenticação e headers customizados
-    authTokenRef.current = undefined;
-    customHeadersRef.current = {};
-
-    setStatus('disconnected');
-  }, []);
+  }, [onLog, disconnect, clearConnectionTimeout, cancelConnection]);
 
   /**
    * Inscreve em um tópico/canal
@@ -420,6 +481,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
     subscribedTopics,
     connect,
     disconnect,
+    cancelConnection,
     subscribe,
     unsubscribe,
     sendMessage

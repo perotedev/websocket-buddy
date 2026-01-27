@@ -40,6 +40,7 @@ const Index = () => {
     subscribedTopics,
     connect,
     disconnect,
+    cancelConnection,
     subscribe,
     unsubscribe,
     sendMessage
@@ -57,6 +58,7 @@ const Index = () => {
           status={status}
           onConnect={connect}
           onDisconnect={disconnect}
+          onCancelConnection={cancelConnection}
         />
       </div>
 

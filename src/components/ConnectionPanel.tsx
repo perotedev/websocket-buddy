@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { ConnectionStatus, ConnectionType } from '@/hooks/useWebSocket';
-import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2, X } from 'lucide-react';
 
 // Interface para header customizado
 interface CustomHeader {
@@ -29,9 +29,10 @@ interface ConnectionPanelProps {
   status: ConnectionStatus;
   onConnect: (url: string, type: ConnectionType, token?: string, customHeaders?: Record<string, string>) => void;
   onDisconnect: () => void;
+  onCancelConnection: () => void;
 }
 
-export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionPanelProps) {
+export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConnection }: ConnectionPanelProps) {
   // URL padrão para testes
   const [url, setUrl] = useState('');
   const [type, setType] = useState<ConnectionType>('websocket');
@@ -320,14 +321,25 @@ export function ConnectionPanel({ status, onConnect, onDisconnect }: ConnectionP
 
         {/* Botões de ação */}
         <div className="flex gap-2 pt-2">
-          <Button
-            onClick={handleConnect}
-            disabled={isConnected || isConnecting || !url.trim()}
-            className="flex-1 gap-1.5 h-8 text-xs"
-          >
-            <Plug className="h-3.5 w-3.5" />
-            Conectar
-          </Button>
+          {isConnecting ? (
+            <Button
+              onClick={onCancelConnection}
+              variant="outline"
+              className="flex-1 gap-1.5 h-8 text-xs"
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancelar
+            </Button>
+          ) : (
+            <Button
+              onClick={handleConnect}
+              disabled={isConnected || !url.trim()}
+              className="flex-1 gap-1.5 h-8 text-xs"
+            >
+              <Plug className="h-3.5 w-3.5" />
+              Conectar
+            </Button>
+          )}
           <Button
             onClick={onDisconnect}
             disabled={!isConnected}
