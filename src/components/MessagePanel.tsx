@@ -13,7 +13,9 @@ import { Send, FileText, Braces } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter } from '@codemirror/lint';
-import { oneDark } from '@codemirror/theme-one-dark';
+import { dracula } from '@uiw/codemirror-theme-dracula';
+import { tags as t } from '@lezer/highlight';
+import { createTheme } from '@uiw/codemirror-themes';
 
 interface MessagePanelProps {
   connectionType: ConnectionType;
@@ -22,6 +24,40 @@ interface MessagePanelProps {
 }
 
 type MessageFormat = 'raw' | 'json';
+
+// Tema dark customizado com fundo totalmente preto
+const blackTheme = createTheme({
+  theme: 'dark',
+  settings: {
+    background: '#000000',
+    foreground: '#e0e0e0',
+    caret: '#00ff00',
+    selection: '#add6ff4d',
+    selectionMatch: '#add6ff4d',
+    lineHighlight: '#0d0d0d',
+    gutterBackground: '#1a1a1a',
+    gutterForeground: '#858585',
+    gutterBorder: '#333333',
+    gutterActiveForeground: '#ffffff',
+  },
+  styles: [
+    { tag: t.comment, color: '#6a9955' },
+    { tag: t.variableName, color: '#9cdcfe' },
+    { tag: [t.string, t.special(t.brace)], color: '#ce9178' },
+    { tag: t.number, color: '#b5cea8' },
+    { tag: t.bool, color: '#569cd6' },
+    { tag: t.null, color: '#569cd6' },
+    { tag: t.keyword, color: '#c586c0' },
+    { tag: t.operator, color: '#d4d4d4' },
+    { tag: t.className, color: '#4ec9b0' },
+    { tag: t.definition(t.typeName), color: '#4ec9b0' },
+    { tag: t.typeName, color: '#4ec9b0' },
+    { tag: t.angleBracket, color: '#808080' },
+    { tag: t.tagName, color: '#569cd6' },
+    { tag: t.attributeName, color: '#9cdcfe' },
+    { tag: t.propertyName, color: '#9cdcfe' },
+  ],
+});
 
 export function MessagePanel({ connectionType, isConnected, onSendMessage }: MessagePanelProps) {
   const { theme } = useTheme();
@@ -132,9 +168,11 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
         ) : (
           <div className={`flex-1 min-h-0 border border-border rounded-md overflow-hidden flex flex-col ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <CodeMirror
+              key={theme}
               value={message}
               onChange={(value) => setMessage(value)}
-              extensions={[json(), linter(jsonParseLinter()), ...(theme === 'dark' ? [oneDark] : [])]}
+              extensions={[json(), linter(jsonParseLinter())]}
+              theme={theme === 'dark' ? blackTheme : 'light'}
               placeholder='{"type": "ping"}'
               height="100%"
               basicSetup={{
