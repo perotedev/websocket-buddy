@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConnectionType } from '@/hooks/useWebSocket';
-import { Send, Braces } from 'lucide-react';
+import { Send, FileText, Braces } from 'lucide-react';
+import CodeMirror from '@uiw/react-codemirror';
+import { json } from '@codemirror/lang-json';
 
 interface MessagePanelProps {
   connectionType: ConnectionType;
@@ -16,11 +18,14 @@ interface MessagePanelProps {
   onSendMessage: (message: string, destination?: string, headers?: Record<string, string>) => void;
 }
 
+type MessageFormat = 'raw' | 'json';
+
 export function MessagePanel({ connectionType, isConnected, onSendMessage }: MessagePanelProps) {
   const [message, setMessage] = useState('');
   const [destination, setDestination] = useState('');
   const [headers, setHeaders] = useState('');
   const [showHeaders, setShowHeaders] = useState(false);
+  const [messageFormat, setMessageFormat] = useState<MessageFormat>('json');
 
   // Handler para enviar mensagem
   const handleSend = () => {
@@ -32,7 +37,7 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
       try {
         parsedHeaders = JSON.parse(headers);
       } catch (e) {
-        // Ignora headers inválidos, mas poderia mostrar erro
+        // Ignora headers inválidos
         console.warn('Headers inválidos:', e);
       }
     }
@@ -43,23 +48,13 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
       onSendMessage(message);
     }
 
-    setMessage('');
+    // Não limpa a mensagem para permitir reenvio
   };
 
   // Handler para tecla Enter (com Ctrl/Cmd para enviar)
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       handleSend();
-    }
-  };
-
-  // Formatar JSON no campo de mensagem
-  const formatJson = () => {
-    try {
-      const parsed = JSON.parse(message);
-      setMessage(JSON.stringify(parsed, null, 2));
-    } catch (e) {
-      // Não é JSON válido, ignora
     }
   };
 
@@ -96,27 +91,82 @@ export function MessagePanel({ connectionType, isConnected, onSendMessage }: Mes
           <Label htmlFor="message" className="text-xs font-medium uppercase">
             Mensagem
           </Label>
-          <Button
-            onClick={formatJson}
-            variant="ghost"
-            size="sm"
-            className="h-5 text-[10px] gap-1 px-1.5"
-          >
-            <Braces className="h-3 w-3" />
-            <span className="hidden sm:inline">JSON</span>
-          </Button>
+          {/* Toggle entre Raw e JSON */}
+          <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
+            <Button
+              onClick={() => setMessageFormat('raw')}
+              variant={messageFormat === 'raw' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-5 text-[10px] gap-1 px-2"
+            >
+              <FileText className="h-3 w-3" />
+              <span>Raw</span>
+            </Button>
+            <Button
+              onClick={() => setMessageFormat('json')}
+              variant={messageFormat === 'json' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-5 text-[10px] gap-1 px-2"
+            >
+              <Braces className="h-3 w-3" />
+              <span>JSON</span>
+            </Button>
+          </div>
         </div>
-        <Textarea
-          id="message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder='{"type": "ping"}'
-          disabled={!isConnected}
-          className="font-mono text-xs resize-none flex-1 min-h-0"
-        />
+
+        {/* Editor baseado no formato */}
+        {messageFormat === 'raw' ? (
+          <Textarea
+            id="message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Digite sua mensagem..."
+            disabled={!isConnected}
+            className="font-mono text-xs resize-none flex-1 min-h-0"
+          />
+        ) : (
+          <div className="flex-1 min-h-0 border border-border rounded-md overflow-hidden flex flex-col">
+            <CodeMirror
+              value={message}
+              onChange={(value) => setMessage(value)}
+              extensions={[json()]}
+              placeholder='{"type": "ping"}'
+              height="100%"
+              basicSetup={{
+                lineNumbers: true,
+                highlightActiveLineGutter: true,
+                highlightSpecialChars: true,
+                foldGutter: true,
+                drawSelection: true,
+                dropCursor: true,
+                allowMultipleSelections: true,
+                indentOnInput: true,
+                syntaxHighlighting: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                rectangularSelection: true,
+                crosshairCursor: true,
+                highlightActiveLine: true,
+                highlightSelectionMatches: true,
+                closeBracketsKeymap: true,
+                defaultKeymap: true,
+                searchKeymap: true,
+                historyKeymap: true,
+                foldKeymap: true,
+                completionKeymap: true,
+                lintKeymap: true,
+              }}
+              className="flex-1"
+              style={{ fontSize: '12px' }}
+              readOnly={!isConnected}
+            />
+          </div>
+        )}
+
         <p className="text-[10px] text-muted-foreground flex-shrink-0">
-          Ctrl+Enter
+          Ctrl+Enter para enviar
         </p>
       </div>
 
