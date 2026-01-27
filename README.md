@@ -322,7 +322,6 @@ Funcionalidades planejadas para futuras versões:
 - [ ] Salvamento de conexões favoritas
 - [ ] Templates de mensagens personalizáveis
 - [ ] Suporte para binário (ArrayBuffer, Blob)
-- [ ] Histórico de mensagens enviadas/recebidas
 - [ ] Filtros e busca no console de eventos
 - [ ] Estatísticas de conexão (latência, mensagens/s)
 - [ ] Modo offline com mock de servidor
