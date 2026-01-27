@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SubscribedTopic, ConnectionType } from '@/hooks/useWebSocket';
-import { Plus, X, Radio } from 'lucide-react';
+import { Plus, X, Radio, Copy, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface SubscriptionPanelProps {
   subscribedTopics: SubscribedTopic[];
@@ -27,6 +28,8 @@ export function SubscriptionPanel({
   onUnsubscribe
 }: SubscriptionPanelProps) {
   const [destination, setDestination] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Handler para inscrever
   const handleSubscribe = () => {
@@ -40,6 +43,26 @@ export function SubscriptionPanel({
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSubscribe();
+    }
+  };
+
+  // Handler para copiar tópico
+  const handleCopy = async (topic: SubscribedTopic) => {
+    try {
+      await navigator.clipboard.writeText(topic.destination);
+      setCopiedId(topic.id);
+      toast({
+        title: "Copiado!",
+        description: "Destino copiado para área de transferência",
+        duration: 2000,
+      });
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar para área de transferência",
+        variant: "destructive",
+      });
     }
   };
 
@@ -93,19 +116,34 @@ export function SubscriptionPanel({
                 {subscribedTopics.map((topic) => (
                   <div
                     key={topic.id}
-                    className="flex items-center justify-between bg-secondary p-1.5 border border-border"
+                    className="flex items-start gap-1.5 bg-secondary p-1.5 border border-border"
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Radio className="h-2.5 w-2.5 text-green-500 flex-shrink-0" />
-                      <span className="font-mono text-xs truncate">
-                        {topic.destination}
-                      </span>
-                    </div>
+                    <Radio className="h-2.5 w-2.5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span
+                      className="font-mono text-xs flex-1 break-all leading-tight"
+                      title={topic.destination}
+                    >
+                      {topic.destination}
+                    </span>
+                    <Button
+                      onClick={() => handleCopy(topic)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 flex-shrink-0"
+                      title="Copiar destino"
+                    >
+                      {copiedId === topic.id ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
                     <Button
                       onClick={() => onUnsubscribe(topic.id)}
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5 flex-shrink-0"
+                      title="Remover inscrição"
                     >
                       <X className="h-3 w-3" />
                     </Button>
