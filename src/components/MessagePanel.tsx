@@ -193,10 +193,6 @@ export function MessagePanel({
 
   return (
     <div className="h-full flex flex-col gap-2">
-      <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide flex-shrink-0">
-        Enviar
-      </h2>
-
       {/* Destino STOMP */}
       {connectionType === "stomp" && (
         <div className="space-y-1 flex-shrink-0">

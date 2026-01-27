@@ -63,7 +63,7 @@ export function ActionPanel({
 
           <TabsContent
             value="subscriptions"
-            className="flex-1 mt-2 sm:mt-3 min-h-0"
+            className="flex-1 mt-2 min-h-0"
             asChild
           >
             <div className="h-full overflow-hidden">
@@ -77,11 +77,7 @@ export function ActionPanel({
             </div>
           </TabsContent>
 
-          <TabsContent
-            value="messages"
-            className="flex-1 mt-2 sm:mt-3 min-h-0"
-            asChild
-          >
+          <TabsContent value="messages" className="flex-1 mt-2 min-h-0" asChild>
             <div className="h-full overflow-hidden">
               <MessagePanel
                 connectionType={connectionType}
