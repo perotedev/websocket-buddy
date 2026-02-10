@@ -7,10 +7,9 @@ import { useWebSocket, LogEntry, ConnectionType } from '@/hooks/useWebSocket';
 import { ConnectionPanel } from '@/components/ConnectionPanel';
 import { ActionPanel } from '@/components/ActionPanel';
 import { EventConsole } from '@/components/EventConsole';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Terminal, Settings, ScrollText } from 'lucide-react';
+import { Settings, ScrollText } from 'lucide-react';
 
 const Index = () => {
   // Estado dos logs
@@ -77,25 +76,7 @@ const Index = () => {
   );
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="border-b border-border flex-shrink-0">
-        <div className="container mx-auto px-2 sm:px-3 py-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Terminal className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-lg font-bold uppercase tracking-tight">
-                  WebSocket Buddy
-                </h1>
-              </div>
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
+    <div className="h-full bg-background flex flex-col overflow-hidden">
       {isMobile ? (
         /* Layout Mobile com Tabs */
         <Tabs defaultValue="config" className="flex-1 flex flex-col overflow-hidden">
@@ -130,30 +111,19 @@ const Index = () => {
         </Tabs>
       ) : (
         /* Layout Desktop - Grid de duas colunas */
-        <>
-          <main className="container mx-auto px-2 sm:px-3 py-2 sm:py-3 flex-1 overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 h-full">
-              {/* Coluna esquerda - Configuração e Controles */}
-              <div className="lg:col-span-4 flex flex-col gap-2 sm:gap-3 min-h-0">
-                {configPanelContent}
-              </div>
-
-              {/* Coluna direita - Console */}
-              <div className="lg:col-span-8 h-full min-h-0">
-                <EventConsole logs={logs} onClear={clearLogs} />
-              </div>
+        <main className="container mx-auto px-2 sm:px-3 py-2 sm:py-3 flex-1 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 h-full">
+            {/* Coluna esquerda - Configuração e Controles */}
+            <div className="lg:col-span-4 flex flex-col gap-2 sm:gap-3 min-h-0">
+              {configPanelContent}
             </div>
-          </main>
 
-          {/* Footer - apenas no desktop */}
-          <footer className="border-t border-border flex-shrink-0">
-            <div className="container mx-auto px-2 sm:px-3 py-1.5 sm:py-2">
-              <p className="text-[10px] sm:text-xs text-muted-foreground text-center">
-                WebSocket Buddy • <a target="_blank" href="https://perotedev.com">@perotedev</a>
-              </p>
+            {/* Coluna direita - Console */}
+            <div className="lg:col-span-8 h-full min-h-0">
+              <EventConsole logs={logs} onClear={clearLogs} />
             </div>
-          </footer>
-        </>
+          </div>
+        </main>
       )}
     </div>
   );
