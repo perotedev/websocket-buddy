@@ -11,15 +11,7 @@ const Tools = () => {
   return (
     <div className="h-full overflow-auto">
       <div className="container mx-auto px-2 sm:px-3 py-3 sm:py-4">
-        <div className="max-w-7xl mx-auto space-y-4">
-          {/* Header */}
-          <div>
-            <h1 className="text-2xl font-bold">Ferramentas Utilitárias</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Ferramentas úteis para desenvolvimento e depuração
-            </p>
-          </div>
-
+        <div className="space-y-4">
           {/* Grid de Ferramentas */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* JWT Decoder */}

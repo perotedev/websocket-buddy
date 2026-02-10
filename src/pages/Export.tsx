@@ -141,15 +141,7 @@ const Export = () => {
   return (
     <div className="h-full overflow-auto">
       <div className="container mx-auto px-2 sm:px-3 py-3 sm:py-4">
-        <div className="max-w-6xl mx-auto space-y-4">
-          {/* Header */}
-          <div>
-            <h1 className="text-2xl font-bold">Exportação e Importação</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Exporte logs, conexões e relatórios ou importe configurações salvas
-            </p>
-          </div>
-
+        <div className="space-y-4">
           {/* Success Alert */}
           {exportSuccess && (
             <Alert className="border-green-500 bg-green-50 dark:bg-green-950">

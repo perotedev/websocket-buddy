@@ -54,10 +54,12 @@ const TestAutomation = () => {
     sendMessage,
   } = useWebSocketContext();
 
-  // Auto-scroll dos logs de teste
+  // Auto-scroll dos logs de teste (apenas durante execução)
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [testLogs]);
+    if (isRunning && testLogs.length > 0) {
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [testLogs, isRunning]);
 
   // Quando conectar após abrir o dialog, inicia o teste pendente
   useEffect(() => {
@@ -227,29 +229,20 @@ const TestAutomation = () => {
   return (
     <div className="h-full overflow-auto">
       <div className="container mx-auto px-2 sm:px-3 py-3 sm:py-4">
-        <div className="max-w-6xl mx-auto space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Test Automation</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Crie testes visualmente ou importe cenários JSON
-              </p>
-            </div>
-            {/* Indicador de conexão */}
-            <div className="flex items-center gap-2">
-              {isConnected ? (
-                <Badge variant="default" className="gap-1 text-[10px]">
-                  <Wifi className="h-3 w-3" />
-                  {connectionType === 'stomp' ? 'STOMP' : 'WebSocket'}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
-                  <WifiOff className="h-3 w-3" />
-                  Sem conexão
-                </Badge>
-              )}
-            </div>
+        <div className="space-y-4">
+          {/* Indicador de conexão */}
+          <div className="flex items-center justify-end">
+            {isConnected ? (
+              <Badge variant="default" className="gap-1 text-[10px]">
+                <Wifi className="h-3 w-3" />
+                {connectionType === 'stomp' ? 'STOMP' : 'WebSocket'}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
+                <WifiOff className="h-3 w-3" />
+                Sem conexão
+              </Badge>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

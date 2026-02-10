@@ -56,21 +56,7 @@ const Performance = () => {
   return (
     <div className="h-full overflow-auto">
       <div className="container mx-auto px-2 sm:px-3 py-3 sm:py-4">
-        <div className="max-w-7xl mx-auto space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Performance & Estatísticas</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Monitoramento em tempo real de métricas de conexão
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={resetStats}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Resetar
-            </Button>
-          </div>
-
+        <div className="space-y-4">
           {/* Status Alert */}
           {status === 'disconnected' && stats.totalMessages === 0 && (
             <Alert>
@@ -84,8 +70,12 @@ const Performance = () => {
           {/* Connection Info */}
           {connectionInfo && (
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm">Informações da Conexão</CardTitle>
+                <Button variant="outline" size="sm" onClick={resetStats} className="h-7 text-xs">
+                  <RotateCcw className="h-3 w-3 mr-1.5" />
+                  Resetar
+                </Button>
               </CardHeader>
               <CardContent className="text-xs space-y-1">
                 <div className="flex justify-between">
