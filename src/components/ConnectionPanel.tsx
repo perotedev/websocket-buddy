@@ -2,7 +2,7 @@
  * Painel de configuração de conexão WebSocket
  * Permite configurar URL, tipo de conexão e controlar a conexão
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,7 @@ import {
 import { ConnectionStatus, ConnectionType } from '@/hooks/useWebSocket';
 import { MOCK_PRESETS } from '@/lib/mockServer';
 import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
 // Interface para header customizado
 interface CustomHeader {
@@ -41,10 +42,19 @@ interface ConnectionPanelProps {
 }
 
 export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConnection }: ConnectionPanelProps) {
-  // URL padrão para testes
-  const [url, setUrl] = useState('');
-  const [type, setType] = useState<ConnectionType>('websocket');
-  const [token, setToken] = useState('');
+  const { connectionConfig, setConnectionConfig } = useWebSocketContext();
+
+  // Estados locais inicializados com valores do contexto
+  const [url, setUrl] = useState(connectionConfig.url);
+  const [type, setType] = useState<ConnectionType>(connectionConfig.type);
+  const [token, setToken] = useState(connectionConfig.token || '');
+
+  // Sincroniza com o contexto quando os valores mudam
+  useEffect(() => {
+    setUrl(connectionConfig.url);
+    setType(connectionConfig.type);
+    setToken(connectionConfig.token || '');
+  }, [connectionConfig]);
 
   // Mock Server
   const [serverMode, setServerMode] = useState<'real' | string>('real');
@@ -81,6 +91,15 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
       }, {} as Record<string, string>);
 
       const hasCustomHeaders = Object.keys(headersObj).length > 0;
+
+      // Salva configuração no contexto
+      setConnectionConfig({
+        url: url.trim(),
+        type,
+        token: token.trim() || undefined,
+        headers: hasCustomHeaders ? headersObj : undefined,
+      });
+
       onConnect(url.trim(), type, token.trim() || undefined, hasCustomHeaders ? headersObj : undefined);
     }
   };

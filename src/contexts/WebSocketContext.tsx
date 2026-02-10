@@ -14,6 +14,13 @@ interface ConnectionInfo {
   disconnectedAt?: Date;
 }
 
+interface ConnectionConfig {
+  url: string;
+  type: 'websocket' | 'stomp';
+  token?: string;
+  headers?: Record<string, string>;
+}
+
 interface WebSocketContextValue {
   // Logs
   logs: LogEntry[];
@@ -30,6 +37,10 @@ interface WebSocketContextValue {
   // Info da conexão
   connectionInfo: ConnectionInfo | null;
   setConnectionInfo: (info: ConnectionInfo | null) => void;
+
+  // Configuração de conexão (para preservar formulário)
+  connectionConfig: ConnectionConfig;
+  setConnectionConfig: (config: ConnectionConfig) => void;
 }
 
 const defaultStats: SessionStats = {
@@ -50,11 +61,17 @@ const defaultStats: SessionStats = {
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
+const defaultConnectionConfig: ConnectionConfig = {
+  url: 'wss://echo.websocket.org',
+  type: 'websocket',
+};
+
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [stats, setStats] = useState<SessionStats>(defaultStats);
   const [snapshots, setSnapshots] = useState<MetricSnapshot[]>([]);
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
+  const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(defaultConnectionConfig);
 
   const addLog = useCallback((log: Omit<LogEntry, 'id' | 'timestamp'>) => {
     const newLog: LogEntry = {
@@ -99,6 +116,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     resetStats,
     connectionInfo,
     setConnectionInfo,
+    connectionConfig,
+    setConnectionConfig,
   };
 
   return (

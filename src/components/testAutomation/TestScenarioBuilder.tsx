@@ -35,15 +35,23 @@ interface AssertItem {
 export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [serverUrl, setServerUrl] = useState('');
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [assertions, setAssertions] = useState<AssertItem[]>([]);
 
   // Adicionar ação
   const addAction = (type: ActionType) => {
+    const params = getDefaultActionParams(type);
+
+    // Se for uma ação connect e temos URL do servidor, preenche automaticamente
+    if (type === 'connect' && serverUrl) {
+      params.url = serverUrl;
+    }
+
     const newAction: ActionItem = {
       id: crypto.randomUUID(),
       type,
-      params: getDefaultActionParams(type),
+      params,
     };
     setActions([...actions, newAction]);
   };
@@ -146,6 +154,20 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
               placeholder="Verifica se a conexão funciona corretamente..."
               className="text-xs min-h-[60px]"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="server-url" className="text-xs font-semibold">URL do Servidor de Teste</Label>
+            <Input
+              id="server-url"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              placeholder="ws://localhost:8080 ou mock://chatbot"
+              className="text-xs h-8 font-mono"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              💡 Defina a URL padrão que será usada nas ações de conexão
+            </p>
           </div>
         </div>
 
