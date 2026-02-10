@@ -44,6 +44,12 @@ export function usePerformanceTracking(config: Partial<PerformanceTrackingConfig
   const snapshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSnapshotTimeRef = useRef<Date>(new Date());
   const messageTimestampsRef = useRef<Map<string, Date>>(new Map());
+  const statsRef = useRef(stats);
+
+  // Mantém ref atualizada com o stats mais recente
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
 
   /**
    * Registra início de conexão
@@ -63,12 +69,13 @@ export function usePerformanceTracking(config: Partial<PerformanceTrackingConfig
     }
 
     snapshotIntervalRef.current = setInterval(() => {
+      const currentStats = statsRef.current;
       const snapshot: MetricSnapshot = {
         timestamp: new Date(),
-        messagesPerSecond: stats.messagesPerSecond,
-        bytesPerSecond: stats.bytesPerSecond,
-        averageLatency: stats.averageLatency,
-        connectionStatus: stats.status
+        messagesPerSecond: currentStats.messagesPerSecond,
+        bytesPerSecond: currentStats.bytesPerSecond,
+        averageLatency: currentStats.averageLatency,
+        connectionStatus: currentStats.status
       };
 
       setSnapshots(prev => {
@@ -77,7 +84,7 @@ export function usePerformanceTracking(config: Partial<PerformanceTrackingConfig
         return updated.slice(-60);
       });
     }, finalConfig.snapshotInterval);
-  }, [finalConfig.snapshotInterval, stats]);
+  }, [finalConfig.snapshotInterval]);
 
   /**
    * Registra fim de conexão
@@ -166,6 +173,20 @@ export function usePerformanceTracking(config: Partial<PerformanceTrackingConfig
       const sentTime = messageTimestampsRef.current.get(relatedMessageId)!;
       latency = now.getTime() - sentTime.getTime();
       messageTimestampsRef.current.delete(relatedMessageId);
+    } else if (messageTimestampsRef.current.size > 0) {
+      // Estima latência usando a mensagem enviada mais recente
+      let mostRecentTime: Date | null = null;
+      let mostRecentId: string | null = null;
+      messageTimestampsRef.current.forEach((time, id) => {
+        if (!mostRecentTime || time.getTime() > mostRecentTime.getTime()) {
+          mostRecentTime = time;
+          mostRecentId = id;
+        }
+      });
+      if (mostRecentTime) {
+        latency = now.getTime() - (mostRecentTime as Date).getTime();
+        if (mostRecentId) messageTimestampsRef.current.delete(mostRecentId);
+      }
     }
 
     setStats(prev => {

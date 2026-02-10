@@ -4,7 +4,7 @@
  */
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { StatsCard } from '@/components/performance/StatsCard';
 import { LatencyChart } from '@/components/performance/LatencyChart';
@@ -67,7 +67,7 @@ const Performance = () => {
             </Alert>
           )}
 
-          {/* Connection Info */}
+          {/* Connection Info + Session Details */}
           {connectionInfo && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -77,35 +77,72 @@ const Performance = () => {
                   Resetar
                 </Button>
               </CardHeader>
-              <CardContent className="text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">URL:</span>
-                  <span className="font-mono">{connectionInfo.url}</span>
+              <CardContent className="text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Conexão */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">URL:</span>
+                      <span className="font-mono truncate max-w-[180px]">{connectionInfo.url}</span>
+                    </div>
+                    {connectionInfo.protocol && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Protocolo:</span>
+                        <span className="font-mono">{connectionInfo.protocol}</span>
+                      </div>
+                    )}
+                    {connectionInfo.connectionType && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Tipo:</span>
+                        <span className="font-mono">{connectionInfo.connectionType}</span>
+                      </div>
+                    )}
+                    {connectionInfo.connectedAt && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Conectado em:</span>
+                        <span className="font-mono">{format(connectionInfo.connectedAt, 'HH:mm:ss dd/MM/yyyy')}</span>
+                      </div>
+                    )}
+                    {connectionInfo.disconnectedAt && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Desconectado em:</span>
+                        <span className="font-mono">{format(connectionInfo.disconnectedAt, 'HH:mm:ss dd/MM/yyyy')}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Métricas */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total de Mensagens:</span>
+                      <span className="font-medium">{stats.totalMessages}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total de Bytes:</span>
+                      <span className="font-medium">{formatBytes(stats.totalBytes)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Erros:</span>
+                      <span className="font-medium">{stats.errorCount}</span>
+                    </div>
+                  </div>
+
+                  {/* Dados Coletados */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duração:</span>
+                      <span className="font-medium">{formatDuration(stats.connectionDuration)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Pontos de Latência:</span>
+                      <span className="font-medium">{stats.latencyHistory?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Snapshots:</span>
+                      <span className="font-medium">{snapshots.length}</span>
+                    </div>
+                  </div>
                 </div>
-                {connectionInfo.protocol && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Protocolo:</span>
-                    <span className="font-mono">{connectionInfo.protocol}</span>
-                  </div>
-                )}
-                {connectionInfo.connectionType && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tipo:</span>
-                    <span className="font-mono">{connectionInfo.connectionType}</span>
-                  </div>
-                )}
-                {connectionInfo.connectedAt && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Conectado em:</span>
-                    <span className="font-mono">{format(connectionInfo.connectedAt, 'HH:mm:ss dd/MM/yyyy')}</span>
-                  </div>
-                )}
-                {connectionInfo.disconnectedAt && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Desconectado em:</span>
-                    <span className="font-mono">{format(connectionInfo.disconnectedAt, 'HH:mm:ss dd/MM/yyyy')}</span>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
@@ -195,52 +232,6 @@ const Performance = () => {
             <ThroughputChart data={snapshots} />
           </div>
 
-          {/* Session Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detalhes da Sessão</CardTitle>
-              <CardDescription>Informações detalhadas da conexão atual</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <h4 className="font-semibold mb-2">Métricas</h4>
-                  <dl className="space-y-1">
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Total de Mensagens:</dt>
-                      <dd className="font-medium">{stats.totalMessages}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Total de Bytes:</dt>
-                      <dd className="font-medium">{formatBytes(stats.totalBytes)}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Erros:</dt>
-                      <dd className="font-medium">{stats.errorCount}</dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-2">Dados Coletados</h4>
-                  <dl className="space-y-1">
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Pontos de Latência:</dt>
-                      <dd className="font-medium">{stats.latencyHistory?.length || 0}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Snapshots:</dt>
-                      <dd className="font-medium">{snapshots.length}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Duração:</dt>
-                      <dd className="font-medium">{formatDuration(stats.connectionDuration)}</dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
