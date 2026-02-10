@@ -62,7 +62,7 @@ interface WebSocketContextValue {
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
 const defaultConnectionConfig: ConnectionConfig = {
-  url: 'wss://echo.websocket.org',
+  url: '',
   type: 'websocket',
 };
 

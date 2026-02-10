@@ -248,7 +248,7 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
                 setServerMode('real');
               }
             }}
-            placeholder={serverMode !== 'real' ? 'mock://preset (automático)' : (type === 'stomp' ? 'wss://seu-servidor/ws' : 'wss://echo.websocket.org')}
+            placeholder={serverMode !== 'real' ? 'mock://preset (automático)' : 'wss://seu-servidor/ws'}
             disabled={isConnected || isConnecting || serverMode !== 'real'}
             className="font-mono text-xs h-8"
           />
