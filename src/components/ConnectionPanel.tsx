@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { ConnectionStatus, ConnectionType } from '@/hooks/useWebSocket';
 import { MOCK_PRESETS } from '@/lib/mockServer';
-import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2, X, KeyRound } from 'lucide-react';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
 // Interface para header customizado
@@ -56,8 +56,24 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
     setToken(connectionConfig.token || '');
   }, [connectionConfig]);
 
-  // Mock Server
-  const [serverMode, setServerMode] = useState<'real' | string>('real');
+  // Mock Server - inicializa com base na URL do contexto
+  const [serverMode, setServerMode] = useState<'real' | string>(() => {
+    if (connectionConfig.url.startsWith('mock://')) {
+      return connectionConfig.url.replace('mock://', '');
+    }
+    return 'real';
+  });
+
+  // Sincroniza serverMode com a URL do contexto
+  useEffect(() => {
+    if (connectionConfig.url.startsWith('mock://')) {
+      setServerMode(connectionConfig.url.replace('mock://', ''));
+    } else if (connectionConfig.url === '') {
+      // Mantém o mode atual se a URL estiver vazia
+    } else {
+      setServerMode('real');
+    }
+  }, [connectionConfig.url]);
 
   // Estado para headers customizados (sempre com uma linha vazia no final)
   const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([
@@ -153,6 +169,10 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
   // Verifica se um header está vazio (para estilização)
   const isHeaderEmpty = (header: CustomHeader) => header.key === '' && header.value === '';
 
+  // Conta headers customizados (sem contar token)
+  const customHeaderCount = customHeaders.filter((h) => h.key !== '' || h.value !== '').length;
+  const hasToken = token.trim().length > 0;
+
   // Indicador de status visual
   const StatusIndicator = () => {
     const statusConfig = {
@@ -234,9 +254,38 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
 
         {/* URL do WebSocket */}
         <div className="space-y-1">
-          <Label htmlFor="ws-url" className="text-xs font-medium uppercase">
-            URL
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ws-url" className="text-xs font-medium uppercase">
+              URL
+            </Label>
+            {/* Headers e Token */}
+            <div className="flex items-center gap-1 h-5">
+              {hasToken && (
+                <KeyRound
+                  className="h-3 w-3 text-yellow-500 cursor-pointer"
+                  onClick={() => !isConnected && !isConnecting && setHeadersDialogOpen(true)}
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => setHeadersDialogOpen(true)}
+                disabled={isConnected || isConnecting}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Headers</span>
+              </button>
+              {customHeaderCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 cursor-pointer hover:bg-secondary/80"
+                  onClick={() => !isConnected && !isConnecting && setHeadersDialogOpen(true)}
+                >
+                  +{customHeaderCount}
+                </Badge>
+              )}
+            </div>
+          </div>
           <Input
             id="ws-url"
             type="text"
@@ -259,65 +308,22 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
           )}
         </div>
 
-        {/* Token de Autenticação (ambos os tipos) */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="ws-token" className="text-xs font-medium uppercase">
-              Token de Autorização {type === 'websocket' && '(Opcional)'}
-            </Label>
-            {/* Headers Customizados */}
-            <div className="flex items-center gap-1 h-5">
-              <button
-                type="button"
-                onClick={() => setHeadersDialogOpen(true)}
-                disabled={isConnected || isConnecting}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus className="h-3 w-3" />
-                <span>Headers</span>
-              </button>
-              {customHeaders.filter((h) => h.key !== '' || h.value !== '').length > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="text-[10px] px-1.5 cursor-pointer hover:bg-secondary/80"
-                  onClick={() => !isConnected && !isConnecting && setHeadersDialogOpen(true)}
-                >
-                  +{customHeaders.filter((h) => h.key !== '' || h.value !== '').length}
-                </Badge>
-              )}
-            </div>
-          </div>
-          <Input
-            id="ws-token"
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="seu_token_aqui"
-            disabled={isConnected || isConnecting}
-            className="font-mono text-xs h-8"
-          />
-          <p className="text-[10px] text-muted-foreground">
-            {type === 'stomp'
-              ? '"Bearer" adicionado automaticamente.'
-              : 'Adicione à URL se necessário (ex: ?token=...)'}
-          </p>
-        </div>
-
-        {/* Dialog de Headers */}
+        {/* Dialog de Headers e Token */}
         <Dialog open={headersDialogOpen} onOpenChange={setHeadersDialogOpen}>
           <DialogContent className="max-w-[488px]">
             <DialogHeader>
               <DialogTitle className="text-sm uppercase">Headers de Conexão</DialogTitle>
               <DialogDescription className="text-xs">
                 {type === 'stomp'
-                  ? 'Headers enviados na conexão STOMP e nas mensagens.'
-                  : 'Headers para referência. WebSocket padrão não suporta headers customizados na conexão.'}
+                  ? 'Token e headers enviados na conexão STOMP e nas mensagens.'
+                  : 'Token e headers para referência. WebSocket padrão não suporta headers customizados na conexão.'}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3">
+              {/* Token de Autorização */}
               <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">Authorization (Token)</Label>
+                <Label className="text-xs font-medium">Token de Autorização</Label>
                 <div className="flex gap-2">
                   <Input
                     value="Authorization"
@@ -325,13 +331,16 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
                     className="font-mono text-xs h-8 w-44 bg-muted"
                   />
                   <Input
-                    value={token ? '••••••••••••' : '(não configurado)'}
-                    disabled
-                    className="font-mono text-xs h-8 flex-1 bg-muted"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="seu_token_aqui"
+                    disabled={isConnected || isConnecting}
+                    type="password"
+                    className="font-mono text-xs h-8 flex-1"
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Configure o token no campo abaixo da URL do websocket. Não é possível editar aqui.
+                  "Bearer" adicionado automaticamente.
                 </p>
               </div>
 

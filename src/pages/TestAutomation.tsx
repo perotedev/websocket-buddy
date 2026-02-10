@@ -230,21 +230,6 @@ const TestAutomation = () => {
     <div className="h-full overflow-auto">
       <div className="container mx-auto px-2 sm:px-3 py-3 sm:py-4">
         <div className="space-y-4">
-          {/* Indicador de conexão */}
-          <div className="flex items-center justify-end">
-            {isConnected ? (
-              <Badge variant="default" className="gap-1 text-[10px]">
-                <Wifi className="h-3 w-3" />
-                {connectionType === 'stomp' ? 'STOMP' : 'WebSocket'}
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
-                <WifiOff className="h-3 w-3" />
-                Sem conexão
-              </Badge>
-            )}
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Coluna Esquerda - Builder / Editor */}
             <div className="space-y-4">
@@ -438,10 +423,25 @@ const TestAutomation = () => {
               {/* Logs do Teste */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Logs de Execução</CardTitle>
-                  <CardDescription>
-                    {isRunning ? 'Executando...' : `${testLogs.length} logs`}
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Logs de Execução</CardTitle>
+                      <CardDescription>
+                        {isRunning ? 'Executando...' : `${testLogs.length} logs`}
+                      </CardDescription>
+                    </div>
+                    {isConnected ? (
+                      <Badge variant="default" className="gap-1 text-[10px]">
+                        <Wifi className="h-3 w-3" />
+                        {connectionType === 'stomp' ? 'STOMP' : 'WebSocket'}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
+                        <WifiOff className="h-3 w-3" />
+                        Sem conexão
+                      </Badge>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="bg-zinc-950 dark:bg-zinc-900 text-green-400 dark:text-green-300 font-mono text-xs p-3 rounded h-[400px] overflow-auto border dark:border-zinc-700">
