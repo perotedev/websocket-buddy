@@ -1,10 +1,12 @@
 /**
- * WebSocket Context - Store de dados compartilhado
- * Armazena logs, performance e info de conexão para acesso global
+ * WebSocket Context - Store de dados compartilhado e gerenciamento global da conexão
+ * Armazena logs, performance, info de conexão e mantém WebSocket ativo globalmente
  */
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { useWebSocket as useWebSocketHook, ConnectionType, ConnectionStatus } from '@/hooks/useWebSocket';
 import type { LogEntry } from '@/hooks/useWebSocket';
 import type { SessionStats, MetricSnapshot } from '@/lib/performance/types';
+import { usePerformanceTracking } from '@/hooks/usePerformanceTracking';
 
 interface ConnectionInfo {
   url: string;
@@ -21,6 +23,11 @@ interface ConnectionConfig {
   headers?: Record<string, string>;
 }
 
+interface SubscribedTopic {
+  id: string;
+  destination: string;
+}
+
 interface WebSocketContextValue {
   // Logs
   logs: LogEntry[];
@@ -30,8 +37,6 @@ interface WebSocketContextValue {
   // Performance
   stats: SessionStats;
   snapshots: MetricSnapshot[];
-  updateStats: (stats: Partial<SessionStats>) => void;
-  addSnapshot: (snapshot: MetricSnapshot) => void;
   resetStats: () => void;
 
   // Info da conexão
@@ -41,23 +46,18 @@ interface WebSocketContextValue {
   // Configuração de conexão (para preservar formulário)
   connectionConfig: ConnectionConfig;
   setConnectionConfig: (config: ConnectionConfig) => void;
-}
 
-const defaultStats: SessionStats = {
-  totalMessages: 0,
-  messagesSent: 0,
-  messagesReceived: 0,
-  totalBytes: 0,
-  bytesSent: 0,
-  bytesReceived: 0,
-  averageLatency: 0,
-  minLatency: 0,
-  maxLatency: 0,
-  errors: 0,
-  connectionDuration: 0,
-  messagesPerSecond: 0,
-  bytesPerSecond: 0,
-};
+  // Controle de WebSocket (mantido globalmente)
+  status: ConnectionStatus;
+  connectionType: ConnectionType;
+  subscribedTopics: SubscribedTopic[];
+  connect: (url: string, type: ConnectionType, token?: string, customHeaders?: Record<string, string>) => void;
+  disconnect: () => void;
+  cancelConnection: () => void;
+  subscribe: (destination: string) => void;
+  unsubscribe: (topicId: string) => void;
+  sendMessage: (message: string, destination?: string) => void;
+}
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
@@ -68,42 +68,106 @@ const defaultConnectionConfig: ConnectionConfig = {
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [stats, setStats] = useState<SessionStats>(defaultStats);
-  const [snapshots, setSnapshots] = useState<MetricSnapshot[]>([]);
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(defaultConnectionConfig);
 
-  const addLog = useCallback((log: Omit<LogEntry, 'id' | 'timestamp'>) => {
+  // Performance tracking
+  const {
+    stats,
+    snapshots,
+    trackConnectionStart,
+    trackConnectionEnd,
+    updateConnectionStatus,
+    trackMessageSent,
+    trackMessageReceived,
+    trackError,
+    resetStats: resetPerfStats,
+  } = usePerformanceTracking({
+    snapshotInterval: 1000,
+    maxLatencyHistory: 60,
+  });
+
+  // Callback para adicionar logs e track performance
+  const handleLog = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
     const newLog: LogEntry = {
-      ...log,
+      ...entry,
       id: crypto.randomUUID(),
       timestamp: new Date(),
     };
     setLogs((prev) => [...prev, newLog]);
-  }, []);
+
+    // Track performance
+    if (entry.type === 'SENT') {
+      const message = entry.data || entry.message || '';
+      trackMessageSent(message);
+    } else if (entry.type === 'MESSAGE') {
+      const message = entry.data || entry.message || '';
+      trackMessageReceived(message);
+    } else if (entry.type === 'ERROR') {
+      trackError(entry.message);
+    }
+  }, [trackMessageSent, trackMessageReceived, trackError]);
+
+  // Hook do WebSocket (mantido globalmente)
+  const {
+    status,
+    connectionType,
+    subscribedTopics,
+    connect: wsConnect,
+    disconnect: wsDisconnect,
+    cancelConnection,
+    subscribe,
+    unsubscribe,
+    sendMessage,
+  } = useWebSocketHook({ onLog: handleLog });
+
+  // Sincronizar status de conexão com performance tracking
+  useEffect(() => {
+    updateConnectionStatus(status);
+  }, [status, updateConnectionStatus]);
+
+  // Atualizar connectionInfo quando conectar/desconectar
+  useEffect(() => {
+    if (status === 'connected') {
+      trackConnectionStart();
+      setConnectionInfo({
+        url: connectionConfig.url,
+        connectionType,
+        connectedAt: new Date(),
+      });
+    } else if (status === 'disconnected' && connectionInfo?.connectedAt) {
+      trackConnectionEnd();
+      setConnectionInfo((prev) => prev ? {
+        ...prev,
+        disconnectedAt: new Date(),
+      } : null);
+    }
+  }, [status, connectionType, connectionConfig.url, trackConnectionStart, trackConnectionEnd, connectionInfo?.connectedAt]);
+
+  // Função wrapper para connect que salva config
+  const connect = useCallback((url: string, type: ConnectionType, token?: string, customHeaders?: Record<string, string>) => {
+    setConnectionConfig({
+      url,
+      type,
+      token,
+      headers: customHeaders,
+    });
+    wsConnect(url, type, token, customHeaders);
+  }, [wsConnect]);
+
+  const addLog = useCallback((log: Omit<LogEntry, 'id' | 'timestamp'>) => {
+    handleLog(log);
+  }, [handleLog]);
 
   const clearLogs = useCallback(() => {
     setLogs([]);
   }, []);
 
-  const updateStats = useCallback((newStats: Partial<SessionStats>) => {
-    setStats((prev) => ({ ...prev, ...newStats }));
-  }, []);
-
-  const addSnapshot = useCallback((snapshot: MetricSnapshot) => {
-    setSnapshots((prev) => {
-      const updated = [...prev, snapshot];
-      // Manter apenas os últimos 60 snapshots (1 minuto se captura a cada 1s)
-      return updated.slice(-60);
-    });
-  }, []);
-
   const resetStats = useCallback(() => {
-    setStats(defaultStats);
-    setSnapshots([]);
+    resetPerfStats();
     setLogs([]);
     setConnectionInfo(null);
-  }, []);
+  }, [resetPerfStats]);
 
   const value: WebSocketContextValue = {
     logs,
@@ -111,13 +175,20 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     clearLogs,
     stats,
     snapshots,
-    updateStats,
-    addSnapshot,
     resetStats,
     connectionInfo,
     setConnectionInfo,
     connectionConfig,
     setConnectionConfig,
+    status,
+    connectionType,
+    subscribedTopics,
+    connect,
+    disconnect: wsDisconnect,
+    cancelConnection,
+    subscribe,
+    unsubscribe,
+    sendMessage,
   };
 
   return (
