@@ -359,13 +359,32 @@ export function MessagePanel({
             </DialogHeader>
             <div className="space-y-2">
               <Label className="text-xs font-medium">Headers (JSON)</Label>
-              <Textarea
-                value={headers}
-                onChange={(e) => setHeaders(e.target.value)}
-                placeholder='{"custom-header": "valor"}'
-                disabled={!isConnected}
-                className="font-mono text-xs min-h-[120px] resize-none"
-              />
+              <div
+                className={`border border-border rounded-md overflow-hidden ${!isConnected ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <CodeMirror
+                  key={`headers-cm-${editorKey}-${theme}`}
+                  value={headers}
+                  onChange={(value) => setHeaders(value)}
+                  extensions={theme === "dark" ? darkExtensions : lightExtensions}
+                  theme={theme === "dark" ? blackTheme : "light"}
+                  placeholder='{"custom-header": "valor"}'
+                  height="150px"
+                  basicSetup={{
+                    lineNumbers: true,
+                    highlightActiveLineGutter: true,
+                    foldGutter: true,
+                    bracketMatching: true,
+                    closeBrackets: true,
+                    autocompletion: true,
+                    highlightActiveLine: false,
+                    syntaxHighlighting: true,
+                  }}
+                  style={{ fontSize: "12px" }}
+                  readOnly={!isConnected}
+                  editable={isConnected}
+                />
+              </div>
               <p className="text-[10px] text-muted-foreground">
                 Formato JSON. content-type é adicionado automaticamente.
               </p>

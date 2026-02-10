@@ -2,7 +2,7 @@
  * WebSocket Context - Store de dados compartilhado e gerenciamento global da conexão
  * Armazena logs, performance, info de conexão e mantém WebSocket ativo globalmente
  */
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 import { useWebSocket as useWebSocketHook, ConnectionType, ConnectionStatus } from '@/hooks/useWebSocket';
 import type { LogEntry } from '@/hooks/useWebSocket';
 import type { SessionStats, MetricSnapshot } from '@/lib/performance/types';
@@ -57,6 +57,18 @@ interface WebSocketContextValue {
   subscribe: (destination: string) => void;
   unsubscribe: (topicId: string) => void;
   sendMessage: (message: string, destination?: string) => void;
+
+  // Estado do painel de ações (persistido entre navegações)
+  actionPanelState: ActionPanelState;
+  setActionPanelState: (state: Partial<ActionPanelState>) => void;
+}
+
+interface ActionPanelState {
+  message: string;
+  destination: string;
+  headers: string;
+  messageFormat: 'raw' | 'json';
+  activeTab: string;
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
@@ -70,6 +82,17 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(defaultConnectionConfig);
+  const [actionPanelState, setActionPanelStateRaw] = useState<ActionPanelState>({
+    message: '',
+    destination: '',
+    headers: '',
+    messageFormat: 'json',
+    activeTab: 'subscriptions',
+  });
+
+  const setActionPanelState = useCallback((partial: Partial<ActionPanelState>) => {
+    setActionPanelStateRaw(prev => ({ ...prev, ...partial }));
+  }, []);
 
   // Performance tracking
   const {
@@ -127,7 +150,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, [status, updateConnectionStatus]);
 
   // Atualizar connectionInfo quando conectar/desconectar
+  const prevStatusRef = useRef<ConnectionStatus>('disconnected');
   useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    // Só executa na transição de status
+    if (status === prevStatus) return;
+
     if (status === 'connected') {
       trackConnectionStart();
       setConnectionInfo({
@@ -135,14 +165,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         connectionType,
         connectedAt: new Date(),
       });
-    } else if (status === 'disconnected' && connectionInfo?.connectedAt) {
+    } else if (status === 'disconnected') {
       trackConnectionEnd();
-      setConnectionInfo((prev) => prev ? {
+      setConnectionInfo((prev) => prev?.connectedAt ? {
         ...prev,
         disconnectedAt: new Date(),
-      } : null);
+      } : prev);
     }
-  }, [status, connectionType, connectionConfig.url, trackConnectionStart, trackConnectionEnd, connectionInfo?.connectedAt]);
+  }, [status, connectionType, connectionConfig.url, trackConnectionStart, trackConnectionEnd]);
 
   // Função wrapper para connect que salva config
   const connect = useCallback((url: string, type: ConnectionType, token?: string, customHeaders?: Record<string, string>) => {
@@ -189,6 +219,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     subscribe,
     unsubscribe,
     sendMessage,
+    actionPanelState,
+    setActionPanelState,
   };
 
   return (
