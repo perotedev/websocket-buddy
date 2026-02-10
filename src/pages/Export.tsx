@@ -2,9 +2,8 @@
  * Página de Exportação e Importação
  * Exporta logs, conexões e relatórios
  */
-import { useState, useCallback, useRef } from 'react';
-import { useWebSocket, LogEntry } from '@/hooks/useWebSocket';
-import { usePerformanceTracking } from '@/hooks/usePerformanceTracking';
+import { useState, useRef } from 'react';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,7 +33,8 @@ import {
 } from '@/lib/export';
 
 const Export = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const { logs, stats, connectionInfo } = useWebSocketContext();
+
   const [connectionName, setConnectionName] = useState('');
   const [connectionDescription, setConnectionDescription] = useState('');
   const [importedProfile, setImportedProfile] = useState<ConnectionProfile | null>(null);
@@ -43,50 +43,45 @@ const Export = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const addLog = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
-    setLogs((prev) => [
-      ...prev,
-      {
-        ...entry,
-        id: crypto.randomUUID(),
-        timestamp: new Date()
-      }
-    ]);
-  }, []);
-
-  const { status, connectionType, connect } = useWebSocket({ onLog: addLog });
-  const { stats } = usePerformanceTracking();
+  // Converter logs do contexto para o formato esperado pelas funções de export
+  const convertedLogs = logs.map(log => ({
+    id: log.id,
+    timestamp: log.timestamp,
+    type: log.type,
+    message: log.message,
+    data: log.data
+  }));
 
   // Handlers de exportação de logs
   const handleExportLogsJSON = () => {
-    exportLogsAsJSON(logs);
+    exportLogsAsJSON(convertedLogs);
     showSuccessMessage('Logs exportados em JSON com sucesso!');
   };
 
   const handleExportLogsCSV = () => {
-    exportLogsAsCSV(logs);
+    exportLogsAsCSV(convertedLogs);
     showSuccessMessage('Logs exportados em CSV com sucesso!');
   };
 
   const handleExportLogsTXT = () => {
-    exportLogsAsTXT(logs);
+    exportLogsAsTXT(convertedLogs);
     showSuccessMessage('Logs exportados em TXT com sucesso!');
   };
 
   // Handler de exportação de sessão
   const handleExportSession = () => {
-    exportSession(logs, stats, {
-      url: window.location.href,
-      type: connectionType || 'unknown'
+    exportSession(convertedLogs, stats, {
+      url: connectionInfo?.url || 'N/A',
+      type: connectionInfo?.connectionType || 'unknown'
     });
     showSuccessMessage('Sessão exportada com sucesso!');
   };
 
   // Handler de exportação de relatório HTML
   const handleExportReportHTML = () => {
-    exportSessionReportHTML(logs, stats, {
-      url: window.location.href,
-      type: connectionType || 'unknown'
+    exportSessionReportHTML(convertedLogs, stats, {
+      url: connectionInfo?.url || 'N/A',
+      type: connectionInfo?.connectionType || 'unknown'
     });
     showSuccessMessage('Relatório HTML gerado com sucesso!');
   };
@@ -100,8 +95,8 @@ const Export = () => {
 
     const profile: ConnectionProfile = {
       name: connectionName,
-      url: '', // Será preenchido pelo usuário na página principal
-      type: 'websocket',
+      url: connectionInfo?.url || '',
+      type: (connectionInfo?.connectionType as 'websocket' | 'stomp') || 'websocket',
       description: connectionDescription,
       createdAt: new Date().toISOString(),
       tags: []
@@ -134,25 +129,14 @@ const Export = () => {
     reader.readAsText(file);
   };
 
-  // Handler para conectar usando perfil importado
-  const handleConnectWithProfile = () => {
-    if (!importedProfile) return;
-
-    connect(
-      importedProfile.url,
-      importedProfile.type,
-      importedProfile.token,
-      importedProfile.headers
-    );
-
-    showSuccessMessage(`Conectando usando perfil "${importedProfile.name}"...`);
-  };
-
   // Mostra mensagem de sucesso temporária
   const showSuccessMessage = (message: string) => {
     setExportSuccess(message);
     setTimeout(() => setExportSuccess(null), 3000);
   };
+
+  const isConnected = connectionInfo?.connectedAt && !connectionInfo?.disconnectedAt;
+  const status = isConnected ? 'connected' : 'disconnected';
 
   return (
     <div className="h-full overflow-auto">
@@ -226,7 +210,7 @@ const Export = () => {
 
                   {logs.length === 0 && (
                     <p className="text-xs text-muted-foreground text-center">
-                      Conecte e use o WebSocket para gerar logs
+                      Conecte e use o WebSocket na página principal para gerar logs
                     </p>
                   )}
                 </CardContent>
@@ -318,7 +302,7 @@ const Export = () => {
                   </Button>
 
                   <p className="text-[10px] text-muted-foreground">
-                    💡 Você poderá configurar URL, token e headers ao importar
+                    💡 O perfil incluirá a URL da conexão atual se houver
                   </p>
                 </CardContent>
               </Card>
@@ -386,7 +370,7 @@ const Export = () => {
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">URL:</span>
-                          <span className="font-mono">{importedProfile.url || 'Não configurado'}</span>
+                          <span className="font-mono text-[10px]">{importedProfile.url || 'Não configurado'}</span>
                         </div>
                         {importedProfile.token && (
                           <div className="flex justify-between">
@@ -402,20 +386,9 @@ const Export = () => {
                         )}
                       </div>
 
-                      <Button
-                        size="sm"
-                        onClick={handleConnectWithProfile}
-                        className="w-full"
-                        disabled={!importedProfile.url}
-                      >
-                        Usar Esta Conexão
-                      </Button>
-
-                      {!importedProfile.url && (
-                        <p className="text-[10px] text-muted-foreground text-center">
-                          Configure a URL antes de conectar
-                        </p>
-                      )}
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        Use este perfil na página principal para se conectar
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -464,8 +437,14 @@ const Export = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tipo de conexão:</span>
-                    <span className="font-mono">{connectionType || 'N/A'}</span>
+                    <span className="font-mono">{connectionInfo?.connectionType || 'N/A'}</span>
                   </div>
+                  {connectionInfo?.url && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">URL:</span>
+                      <span className="font-mono text-[10px] truncate max-w-[200px]">{connectionInfo.url}</span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

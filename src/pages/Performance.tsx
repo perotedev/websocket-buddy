@@ -2,9 +2,7 @@
  * Página de Performance & Stats
  * Monitoramento em tempo real de métricas de conexão
  */
-import { useState, useCallback, useEffect } from 'react';
-import { useWebSocket, LogEntry, ConnectionType } from '@/hooks/useWebSocket';
-import { usePerformanceTracking } from '@/hooks/usePerformanceTracking';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,75 +22,8 @@ import {
 import { format } from 'date-fns';
 
 const Performance = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-
-  const addLog = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
-    setLogs((prev) => [
-      ...prev,
-      {
-        ...entry,
-        id: crypto.randomUUID(),
-        timestamp: new Date()
-      }
-    ]);
-  }, []);
-
-  // Hook do WebSocket
-  const {
-    status,
-    connectionType,
-    subscribedTopics,
-    connect,
-    disconnect,
-    subscribe,
-    unsubscribe,
-    sendMessage
-  } = useWebSocket({ onLog: addLog });
-
-  // Hook de Performance Tracking
-  const {
-    stats,
-    snapshots,
-    trackConnectionStart,
-    trackConnectionEnd,
-    updateConnectionStatus,
-    trackMessageSent,
-    trackMessageReceived,
-    trackError,
-    resetStats
-  } = usePerformanceTracking();
-
-  // Sincroniza status da conexão
-  useEffect(() => {
-    updateConnectionStatus(status);
-
-    if (status === 'connecting') {
-      trackConnectionStart();
-    } else if (status === 'disconnected') {
-      trackConnectionEnd();
-    }
-  }, [status, trackConnectionStart, trackConnectionEnd, updateConnectionStatus]);
-
-  // Monitora novos logs para tracking
-  useEffect(() => {
-    if (logs.length === 0) return;
-
-    const lastLog = logs[logs.length - 1];
-
-    switch (lastLog.type) {
-      case 'SENT':
-        trackMessageSent(lastLog.data || lastLog.message);
-        break;
-
-      case 'MESSAGE':
-        trackMessageReceived(lastLog.data || lastLog.message);
-        break;
-
-      case 'ERROR':
-        trackError(lastLog.message);
-        break;
-    }
-  }, [logs, trackMessageSent, trackMessageReceived, trackError]);
+  // Dados do contexto global
+  const { stats, snapshots, resetStats, connectionInfo } = useWebSocketContext();
 
   // Formata duração
   const formatDuration = (ms: number): string => {
@@ -119,10 +50,8 @@ const Performance = () => {
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
 
-  // Calcula duração atual se conectado
-  const currentDuration = stats.connectionStartTime && status === 'connected'
-    ? Date.now() - stats.connectionStartTime.getTime()
-    : stats.connectionDuration;
+  const isConnected = connectionInfo?.connectedAt && !connectionInfo?.disconnectedAt;
+  const status = isConnected ? 'connected' : 'disconnected';
 
   return (
     <div className="h-full overflow-auto">
@@ -143,7 +72,7 @@ const Performance = () => {
           </div>
 
           {/* Status Alert */}
-          {status === 'disconnected' && (
+          {status === 'disconnected' && stats.totalMessages === 0 && (
             <Alert>
               <Activity className="h-4 w-4" />
               <AlertDescription className="text-xs">
@@ -152,20 +81,59 @@ const Performance = () => {
             </Alert>
           )}
 
+          {/* Connection Info */}
+          {connectionInfo && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Informações da Conexão</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">URL:</span>
+                  <span className="font-mono">{connectionInfo.url}</span>
+                </div>
+                {connectionInfo.protocol && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Protocolo:</span>
+                    <span className="font-mono">{connectionInfo.protocol}</span>
+                  </div>
+                )}
+                {connectionInfo.connectionType && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tipo:</span>
+                    <span className="font-mono">{connectionInfo.connectionType}</span>
+                  </div>
+                )}
+                {connectionInfo.connectedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Conectado em:</span>
+                    <span className="font-mono">{format(connectionInfo.connectedAt, 'HH:mm:ss dd/MM/yyyy')}</span>
+                  </div>
+                )}
+                {connectionInfo.disconnectedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Desconectado em:</span>
+                    <span className="font-mono">{format(connectionInfo.disconnectedAt, 'HH:mm:ss dd/MM/yyyy')}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatsCard
               title="Status"
-              value={status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando' : 'Desconectado'}
-              subtitle={stats.connectionStartTime ? `Desde ${format(stats.connectionStartTime, 'HH:mm:ss')}` : undefined}
+              value={isConnected ? 'Conectado' : 'Desconectado'}
+              subtitle={connectionInfo?.connectedAt ? `Desde ${format(connectionInfo.connectedAt, 'HH:mm:ss')}` : undefined}
               icon={Activity}
-              trend={status === 'connected' ? 'up' : status === 'error' ? 'down' : 'neutral'}
+              trend={isConnected ? 'up' : 'neutral'}
             />
 
             <StatsCard
               title="Duração"
-              value={formatDuration(currentDuration)}
-              subtitle={stats.connectionStartTime ? 'Tempo conectado' : 'Não conectado'}
+              value={formatDuration(stats.connectionDuration)}
+              subtitle={connectionInfo?.connectedAt ? 'Tempo conectado' : 'Não conectado'}
               icon={Clock}
             />
 
@@ -189,7 +157,7 @@ const Performance = () => {
             <StatsCard
               title="Latência Média"
               value={`${stats.averageLatency.toFixed(2)} ms`}
-              subtitle={stats.latencyHistory.length > 0 ? `Min: ${stats.minLatency.toFixed(2)}ms | Max: ${stats.maxLatency.toFixed(2)}ms` : 'Sem dados'}
+              subtitle={stats.averageLatency > 0 ? `Min: ${stats.minLatency.toFixed(2)}ms | Max: ${stats.maxLatency.toFixed(2)}ms` : 'Sem dados'}
               icon={Zap}
             />
 
@@ -230,7 +198,7 @@ const Performance = () => {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <LatencyChart
-              data={stats.latencyHistory}
+              data={stats.latencyHistory || []}
               averageLatency={stats.averageLatency}
             />
 
@@ -246,37 +214,37 @@ const Performance = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <h4 className="font-semibold mb-2">Conexão</h4>
+                  <h4 className="font-semibold mb-2">Métricas</h4>
                   <dl className="space-y-1">
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Tipo:</dt>
-                      <dd className="font-medium">{connectionType || 'N/A'}</dd>
+                      <dt className="text-muted-foreground">Total de Mensagens:</dt>
+                      <dd className="font-medium">{stats.totalMessages}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Status:</dt>
-                      <dd className="font-medium">{stats.status}</dd>
+                      <dt className="text-muted-foreground">Total de Bytes:</dt>
+                      <dd className="font-medium">{formatBytes(stats.totalBytes)}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Inscrições:</dt>
-                      <dd className="font-medium">{subscribedTopics.length}</dd>
+                      <dt className="text-muted-foreground">Erros:</dt>
+                      <dd className="font-medium">{stats.errorCount}</dd>
                     </div>
                   </dl>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold mb-2">Métricas</h4>
+                  <h4 className="font-semibold mb-2">Dados Coletados</h4>
                   <dl className="space-y-1">
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">Pontos de Latência:</dt>
-                      <dd className="font-medium">{stats.latencyHistory.length}</dd>
+                      <dd className="font-medium">{stats.latencyHistory?.length || 0}</dd>
                     </div>
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">Snapshots:</dt>
                       <dd className="font-medium">{snapshots.length}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Erros:</dt>
-                      <dd className="font-medium">{stats.errorCount}</dd>
+                      <dt className="text-muted-foreground">Duração:</dt>
+                      <dd className="font-medium">{formatDuration(stats.connectionDuration)}</dd>
                     </div>
                   </dl>
                 </div>

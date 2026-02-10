@@ -8,11 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code } from 'lucide-react';
 import { parseTestScenario, exportTestScenario } from '@/lib/testAutomation';
 import { TestScenario, TestScenarioResult } from '@/lib/testAutomation/types';
 import { TestRunner, TestRunnerCallbacks } from '@/lib/testAutomation/TestRunner';
 import { useWebSocket, LogEntry, ConnectionType } from '@/hooks/useWebSocket';
+import { TestScenarioBuilder } from '@/components/testAutomation/TestScenarioBuilder';
 
 const TestAutomation = () => {
   const [scenarioJson, setScenarioJson] = useState('');
@@ -138,6 +140,15 @@ const TestAutomation = () => {
     }
   };
 
+  // Handler para executar teste do builder
+  const handleRunTestFromBuilder = (scenario: TestScenario) => {
+    setCurrentScenario(scenario);
+    const json = exportTestScenario(scenario);
+    setScenarioJson(json);
+    // Executa o teste
+    setTimeout(() => handleRunTest(), 100);
+  };
+
   // Carregar exemplo
   const loadExample = () => {
     const example: TestScenario = {
@@ -201,21 +212,41 @@ const TestAutomation = () => {
           <div>
             <h1 className="text-2xl font-bold">Test Automation</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Importe e execute cenários de teste automatizados
+              Crie testes visualmente ou importe cenários JSON
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Coluna Esquerda - Editor */}
+            {/* Coluna Esquerda - Builder / Editor */}
             <div className="space-y-4">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Cenário de Teste (JSON)</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Cenário de Teste</CardTitle>
                   <CardDescription>
-                    Cole ou carregue um arquivo JSON de cenário
+                    Crie visualmente ou edite o JSON do teste
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent>
+                  <Tabs defaultValue="builder" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                      <TabsTrigger value="builder" className="text-xs">
+                        <Wrench className="h-3 w-3 mr-2" />
+                        Builder Visual
+                      </TabsTrigger>
+                      <TabsTrigger value="json" className="text-xs">
+                        <Code className="h-3 w-3 mr-2" />
+                        Editor JSON
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* Tab: Builder Visual */}
+                    <TabsContent value="builder" className="space-y-3 mt-0">
+                      <TestScenarioBuilder onRunTest={handleRunTestFromBuilder} />
+                    </TabsContent>
+
+                    {/* Tab: Editor JSON */}
+                    <TabsContent value="json" className="space-y-3 mt-0">
+                      <div className="space-y-3">
                   {/* Botões de Ação */}
                   <div className="flex gap-2 flex-wrap">
                     <Button
@@ -319,6 +350,9 @@ const TestAutomation = () => {
                       </Button>
                     )}
                   </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </div>
