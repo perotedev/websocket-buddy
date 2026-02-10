@@ -1,19 +1,29 @@
 /**
  * Página de Test Automation
  * Importa e executa cenários de teste automatizados
+ * Usa a conexão ativa do contexto global (WebSocketContext)
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code, Wifi, WifiOff } from 'lucide-react';
 import { parseTestScenario, exportTestScenario } from '@/lib/testAutomation';
 import { TestScenario, TestScenarioResult } from '@/lib/testAutomation/types';
 import { TestRunner, TestRunnerCallbacks } from '@/lib/testAutomation/TestRunner';
-import { useWebSocket, LogEntry, ConnectionType } from '@/hooks/useWebSocket';
+import { ConnectionType } from '@/hooks/useWebSocket';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import { ConnectionPanel } from '@/components/ConnectionPanel';
 import { TestScenarioBuilder } from '@/components/testAutomation/TestScenarioBuilder';
 
 const TestAutomation = () => {
@@ -23,32 +33,43 @@ const TestAutomation = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [testResult, setTestResult] = useState<TestScenarioResult | null>(null);
   const [testLogs, setTestLogs] = useState<string[]>([]);
+  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
+  const [pendingScenario, setPendingScenario] = useState<TestScenario | null>(null);
 
   const testRunnerRef = useRef<TestRunner | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
-  // Hook do WebSocket para o runner usar
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const addLog = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
-    setLogs((prev) => [
-      ...prev,
-      {
-        ...entry,
-        id: crypto.randomUUID(),
-        timestamp: new Date()
-      }
-    ]);
-  }, []);
-
+  // Usa a conexão global do contexto
   const {
     status,
+    connectionType,
     subscribedTopics,
+    logs,
     connect,
     disconnect,
+    cancelConnection,
     subscribe,
     unsubscribe,
-    sendMessage
-  } = useWebSocket({ onLog: addLog });
+    sendMessage,
+  } = useWebSocketContext();
+
+  // Auto-scroll dos logs de teste
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [testLogs]);
+
+  // Quando conectar após abrir o dialog, inicia o teste pendente
+  useEffect(() => {
+    if (status === 'connected' && pendingScenario && !isRunning) {
+      setConnectionDialogOpen(false);
+      // Aguarda um pouco para a conexão estabilizar antes de iniciar o teste
+      setTimeout(() => {
+        executeTest(pendingScenario);
+        setPendingScenario(null);
+      }, 500);
+    }
+  }, [status, pendingScenario, isRunning]);
 
   // Handler para carregar arquivo
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,23 +97,20 @@ const TestAutomation = () => {
     }
   };
 
-  // Executar teste
-  const handleRunTest = async () => {
-    if (!currentScenario) return;
-
+  // Executa o teste diretamente (quando já conectado)
+  const executeTest = async (scenario: TestScenario) => {
     setIsRunning(true);
     setTestResult(null);
     setTestLogs([]);
-    setLogs([]); // Limpa logs anteriores
 
-    // Cria callbacks para o TestRunner
+    // Cria callbacks para o TestRunner usando a conexão do contexto
     const callbacks: TestRunnerCallbacks = {
       connect: async (url: string, type: ConnectionType, token?: string) => {
-        await new Promise<void>((resolve) => {
+        // Usa a conexão existente do contexto - não cria nova
+        if (status !== 'connected') {
           connect(url, type, token);
-          // Aguarda um pouco para conexão estabelecer
-          setTimeout(resolve, 1000);
-        });
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       },
       disconnect: async () => {
         disconnect();
@@ -123,7 +141,7 @@ const TestAutomation = () => {
     testRunnerRef.current = runner;
 
     try {
-      const result = await runner.runScenario(currentScenario);
+      const result = await runner.runScenario(scenario);
       setTestResult(result);
     } catch (error) {
       setTestLogs(prev => [...prev, `[ERROR] ${error}`]);
@@ -131,6 +149,20 @@ const TestAutomation = () => {
       setIsRunning(false);
       testRunnerRef.current = null;
     }
+  };
+
+  // Handler principal para executar teste (verifica conexão)
+  const handleRunTest = async () => {
+    if (!currentScenario) return;
+
+    if (status !== 'connected') {
+      // Sem conexão ativa - abre dialog para conectar
+      setPendingScenario(currentScenario);
+      setConnectionDialogOpen(true);
+      return;
+    }
+
+    executeTest(currentScenario);
   };
 
   // Parar teste
@@ -145,38 +177,28 @@ const TestAutomation = () => {
     setCurrentScenario(scenario);
     const json = exportTestScenario(scenario);
     setScenarioJson(json);
-    // Executa o teste
-    setTimeout(() => handleRunTest(), 100);
+
+    if (status !== 'connected') {
+      // Sem conexão ativa - abre dialog
+      setPendingScenario(scenario);
+      setConnectionDialogOpen(true);
+      return;
+    }
+
+    setTimeout(() => executeTest(scenario), 100);
   };
 
   // Carregar exemplo
   const loadExample = () => {
     const example: TestScenario = {
-      name: "Exemplo: Teste Mock Server",
-      description: "Testa o chatbot do mock server",
+      name: "Exemplo: Teste de envio e resposta",
+      description: "Envia uma mensagem e verifica se recebeu resposta",
       version: "1.0.0",
       config: {
         stopOnError: true,
         logLevel: "normal"
       },
       actions: [
-        {
-          type: "connect",
-          url: "mock://chatbot",
-          connectionType: "websocket",
-          description: "Conecta ao mock chatbot"
-        },
-        {
-          type: "wait",
-          duration: 1000,
-          description: "Aguarda conexão estabelecer"
-        },
-        {
-          type: "assert",
-          assertionType: "status_is",
-          expected: "connected",
-          description: "Verifica se conectou"
-        },
         {
           type: "send",
           message: "Olá",
@@ -191,10 +213,6 @@ const TestAutomation = () => {
           type: "assert",
           assertionType: "message_received",
           description: "Verifica se recebeu resposta"
-        },
-        {
-          type: "disconnect",
-          description: "Desconecta"
         }
       ]
     };
@@ -204,16 +222,34 @@ const TestAutomation = () => {
     handleParseScenario(json);
   };
 
+  const isConnected = status === 'connected';
+
   return (
     <div className="h-full overflow-auto">
       <div className="container mx-auto px-2 sm:px-3 py-3 sm:py-4">
         <div className="max-w-6xl mx-auto space-y-4">
           {/* Header */}
-          <div>
-            <h1 className="text-2xl font-bold">Test Automation</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Crie testes visualmente ou importe cenários JSON
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Test Automation</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Crie testes visualmente ou importe cenários JSON
+              </p>
+            </div>
+            {/* Indicador de conexão */}
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <Badge variant="default" className="gap-1 text-[10px]">
+                  <Wifi className="h-3 w-3" />
+                  {connectionType === 'stomp' ? 'STOMP' : 'WebSocket'}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
+                  <WifiOff className="h-3 w-3" />
+                  Sem conexão
+                </Badge>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -415,18 +451,28 @@ const TestAutomation = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-black text-green-400 font-mono text-xs p-3 rounded h-[400px] overflow-auto">
+                  <div className="bg-zinc-950 dark:bg-zinc-900 text-green-400 dark:text-green-300 font-mono text-xs p-3 rounded h-[400px] overflow-auto border dark:border-zinc-700">
                     {testLogs.length === 0 ? (
-                      <div className="text-muted-foreground">
+                      <div className="text-zinc-500 dark:text-zinc-600">
                         Execute um teste para ver os logs aqui...
                       </div>
                     ) : (
                       testLogs.map((log, index) => (
-                        <div key={index} className="mb-1">
+                        <div
+                          key={index}
+                          className={`mb-1 ${
+                            log.includes('[ERROR]')
+                              ? 'text-red-400 dark:text-red-300'
+                              : log.includes('[INFO]')
+                              ? 'text-green-400 dark:text-green-300'
+                              : 'text-zinc-300 dark:text-zinc-400'
+                          }`}
+                        >
                           {log}
                         </div>
                       ))
                     )}
+                    <div ref={logsEndRef} />
                   </div>
                 </CardContent>
               </Card>
@@ -434,6 +480,32 @@ const TestAutomation = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialog de Conexão - aparece quando tenta executar teste sem conexão */}
+      <Dialog
+        open={connectionDialogOpen}
+        onOpenChange={(open) => {
+          setConnectionDialogOpen(open);
+          if (!open) {
+            setPendingScenario(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm uppercase">Conexão Necessária</DialogTitle>
+            <DialogDescription className="text-xs">
+              Estabeleça uma conexão antes de executar os testes. O teste iniciará automaticamente após a conexão.
+            </DialogDescription>
+          </DialogHeader>
+          <ConnectionPanel
+            status={status}
+            onConnect={connect}
+            onDisconnect={disconnect}
+            onCancelConnection={cancelConnection}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

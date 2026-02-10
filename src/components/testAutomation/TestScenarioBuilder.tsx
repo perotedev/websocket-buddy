@@ -17,7 +17,7 @@ interface TestScenarioBuilderProps {
   onRunTest: (scenario: TestScenario) => void;
 }
 
-type ActionType = 'connect' | 'send' | 'subscribe' | 'unsubscribe' | 'wait' | 'disconnect' | 'close' | 'wait-for-message';
+type ActionType = 'send' | 'subscribe' | 'unsubscribe' | 'wait' | 'wait-for-message';
 type AssertType = 'message-received' | 'message-contains' | 'no-errors' | 'connection-closed' | 'latency';
 
 interface ActionItem {
@@ -35,18 +35,12 @@ interface AssertItem {
 export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [serverUrl, setServerUrl] = useState('');
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [assertions, setAssertions] = useState<AssertItem[]>([]);
 
   // Adicionar ação
   const addAction = (type: ActionType) => {
     const params = getDefaultActionParams(type);
-
-    // Se for uma ação connect e temos URL do servidor, preenche automaticamente
-    if (type === 'connect' && serverUrl) {
-      params.url = serverUrl;
-    }
 
     const newAction: ActionItem = {
       id: crypto.randomUUID(),
@@ -155,20 +149,6 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
               className="text-xs min-h-[60px]"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="server-url" className="text-xs font-semibold">URL do Servidor de Teste</Label>
-            <Input
-              id="server-url"
-              value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
-              placeholder="ws://localhost:8080 ou mock://chatbot"
-              className="text-xs h-8 font-mono"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              💡 Defina a URL padrão que será usada nas ações de conexão
-            </p>
-          </div>
         </div>
 
         {/* Ações */}
@@ -180,12 +160,11 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
                 <SelectValue placeholder="Adicionar ação" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="connect">Conectar</SelectItem>
                 <SelectItem value="send">Enviar Mensagem</SelectItem>
                 <SelectItem value="subscribe">Inscrever em Tópico</SelectItem>
+                <SelectItem value="unsubscribe">Desinscrever de Tópico</SelectItem>
                 <SelectItem value="wait">Aguardar</SelectItem>
                 <SelectItem value="wait-for-message">Aguardar Mensagem</SelectItem>
-                <SelectItem value="disconnect">Desconectar</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -295,13 +274,10 @@ function ActionEditor({
   onRemove: () => void;
 }) {
   const actionLabels: Record<ActionType, string> = {
-    connect: 'Conectar',
     send: 'Enviar',
     subscribe: 'Inscrever',
     unsubscribe: 'Desinscrever',
     wait: 'Aguardar',
-    disconnect: 'Desconectar',
-    close: 'Fechar',
     'wait-for-message': 'Aguardar Mensagem',
   };
 
@@ -318,25 +294,33 @@ function ActionEditor({
       </div>
 
       <div className="space-y-2">
-        {action.type === 'connect' && (
+        {action.type === 'send' && (
+          <>
+            <Input
+              value={action.params.destination || ''}
+              onChange={(e) => onUpdate('destination', e.target.value)}
+              placeholder="Destino STOMP (ex: /app/chat) - opcional para WebSocket puro"
+              className="text-xs h-7"
+            />
+            <Textarea
+              value={action.params.message || ''}
+              onChange={(e) => onUpdate('message', e.target.value)}
+              placeholder='{"type": "ping"}'
+              className="text-xs min-h-[60px]"
+            />
+          </>
+        )}
+
+        {action.type === 'subscribe' && (
           <Input
-            value={action.params.url || ''}
-            onChange={(e) => onUpdate('url', e.target.value)}
-            placeholder="ws://localhost:8080"
+            value={action.params.destination || ''}
+            onChange={(e) => onUpdate('destination', e.target.value)}
+            placeholder="/topic/messages"
             className="text-xs h-7"
           />
         )}
 
-        {action.type === 'send' && (
-          <Textarea
-            value={action.params.message || ''}
-            onChange={(e) => onUpdate('message', e.target.value)}
-            placeholder='{"type": "ping"}'
-            className="text-xs min-h-[60px]"
-          />
-        )}
-
-        {action.type === 'subscribe' && (
+        {action.type === 'unsubscribe' && (
           <Input
             value={action.params.destination || ''}
             onChange={(e) => onUpdate('destination', e.target.value)}
@@ -435,8 +419,6 @@ function AssertionEditor({
 // Funções auxiliares
 function getDefaultActionParams(type: ActionType): Record<string, any> {
   switch (type) {
-    case 'connect':
-      return { url: '' };
     case 'send':
       return { message: '' };
     case 'subscribe':

@@ -3,10 +3,9 @@
  */
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Terminal, FlaskConical, BarChart3, Wrench, Download, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Terminal, FlaskConical, BarChart3, Wrench, Download, Wifi, WifiOff, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
-import { Badge } from '@/components/ui/badge';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -113,24 +112,30 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Status da Conexão */}
-            <div className="flex items-center">
+            <div className="flex items-center gap-1.5">
               {status === 'connected' && (
-                <Badge variant="default" className="gap-1 text-[10px] px-2 py-0.5">
-                  <Wifi className="h-3 w-3" />
-                  <span className="hidden sm:inline">Conectado</span>
-                </Badge>
+                <>
+                  <Wifi className="h-3.5 w-3.5 text-green-500" />
+                  <span className="hidden sm:inline text-[11px] font-medium text-green-500">Conectado</span>
+                </>
               )}
               {status === 'connecting' && (
-                <Badge variant="secondary" className="gap-1 text-[10px] px-2 py-0.5">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span className="hidden sm:inline">Conectando</span>
-                </Badge>
+                <>
+                  <Loader2 className="h-3.5 w-3.5 text-yellow-500 animate-spin" />
+                  <span className="hidden sm:inline text-[11px] font-medium text-yellow-500">Conectando</span>
+                </>
               )}
               {status === 'disconnected' && (
-                <Badge variant="outline" className="gap-1 text-[10px] px-2 py-0.5 text-muted-foreground">
-                  <WifiOff className="h-3 w-3" />
-                  <span className="hidden sm:inline">Desconectado</span>
-                </Badge>
+                <>
+                  <WifiOff className="h-3.5 w-3.5 text-slate-400" />
+                  <span className="hidden sm:inline text-[11px] font-medium text-slate-400">Desconectado</span>
+                </>
+              )}
+              {status === 'error' && (
+                <>
+                  <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                  <span className="hidden sm:inline text-[11px] font-medium text-red-500">Erro</span>
+                </>
               )}
             </div>
 
