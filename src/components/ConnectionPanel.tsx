@@ -9,6 +9,13 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -16,6 +23,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { ConnectionStatus, ConnectionType } from '@/hooks/useWebSocket';
+import { MOCK_PRESETS } from '@/lib/mockServer';
 import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2, X } from 'lucide-react';
 
 // Interface para header customizado
@@ -38,11 +46,28 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
   const [type, setType] = useState<ConnectionType>('websocket');
   const [token, setToken] = useState('');
 
+  // Mock Server
+  const [serverMode, setServerMode] = useState<'real' | string>('real');
+
   // Estado para headers customizados (sempre com uma linha vazia no final)
   const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([
     { id: crypto.randomUUID(), key: '', value: '' }
   ]);
   const [headersDialogOpen, setHeadersDialogOpen] = useState(false);
+
+  // Handler para mudança de modo (real/mock)
+  const handleServerModeChange = (mode: string) => {
+    setServerMode(mode);
+    if (mode !== 'real') {
+      // Se selecionou um preset mock, atualiza a URL
+      setUrl(`mock://${mode}`);
+    } else {
+      // Se voltou para real, limpa a URL se for mock
+      if (url.startsWith('mock://')) {
+        setUrl('');
+      }
+    }
+  };
 
   // Handler para conectar
   const handleConnect = () => {
@@ -162,6 +187,32 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
       </div>
 
       <div className="space-y-2">
+        {/* Modo: Servidor Real ou Mock */}
+        <div className="space-y-1">
+          <Label htmlFor="server-mode" className="text-xs font-medium uppercase">
+            Modo de Conexão
+          </Label>
+          <Select
+            value={serverMode}
+            onValueChange={handleServerModeChange}
+            disabled={isConnected || isConnecting}
+          >
+            <SelectTrigger id="server-mode" className="h-8 text-xs">
+              <SelectValue placeholder="Selecione o modo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="real" className="text-xs">
+                🌐 Servidor Real
+              </SelectItem>
+              {Object.values(MOCK_PRESETS).map((preset) => (
+                <SelectItem key={preset.id} value={preset.id} className="text-xs">
+                  {preset.icon} {preset.name} - {preset.description}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* URL do WebSocket */}
         <div className="space-y-1">
           <Label htmlFor="ws-url" className="text-xs font-medium uppercase">
@@ -171,11 +222,22 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
             id="ws-url"
             type="text"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={type === 'stomp' ? 'wss://seu-servidor/ws' : 'wss://echo.websocket.org'}
-            disabled={isConnected || isConnecting}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              // Se mudar URL manualmente para algo que não é mock, volta para modo real
+              if (!e.target.value.startsWith('mock://') && serverMode !== 'real') {
+                setServerMode('real');
+              }
+            }}
+            placeholder={serverMode !== 'real' ? 'mock://preset (automático)' : (type === 'stomp' ? 'wss://seu-servidor/ws' : 'wss://echo.websocket.org')}
+            disabled={isConnected || isConnecting || serverMode !== 'real'}
             className="font-mono text-xs h-8"
           />
+          {serverMode !== 'real' && (
+            <p className="text-[10px] text-muted-foreground">
+              🤖 Usando Mock Server - Conexão simulada no navegador
+            </p>
+          )}
         </div>
 
         {/* Token de Autenticação (ambos os tipos) */}

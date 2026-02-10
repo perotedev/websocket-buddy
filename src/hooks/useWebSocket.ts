@@ -1,9 +1,11 @@
 /**
  * Hook personalizado para gerenciar conexões WebSocket (puro e STOMP)
  * Suporta inscrição em múltiplos tópicos e logging de eventos
+ * Suporta Mock Server para testes sem servidor real
  */
 import { useState, useRef, useCallback } from "react";
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
+import { MockServerAdapter, MockPresetType } from "@/lib/mockServer";
 
 // Tipos de conexão suportados
 export type ConnectionType = "websocket" | "stomp";
@@ -56,6 +58,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
   // Referências para as conexões
   const wsRef = useRef<WebSocket | null>(null);
   const stompClientRef = useRef<Client | null>(null);
+  const mockAdapterRef = useRef<MockServerAdapter | null>(null);
   const subscriptionsRef = useRef<Map<string, StompSubscription>>(new Map());
   const authTokenRef = useRef<string | undefined>(undefined);
   const reconnectAttemptsRef = useRef<number>(0);
@@ -118,6 +121,13 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       stompClientRef.current = null;
     }
 
+    // Desconecta Mock Server
+    if (mockAdapterRef.current) {
+      console.log("[Disconnect] Desconectando Mock Server...");
+      mockAdapterRef.current.disconnect();
+      mockAdapterRef.current = null;
+    }
+
     // Limpa o token de autenticação e headers customizados
     authTokenRef.current = undefined;
     customHeadersRef.current = {};
@@ -148,6 +158,12 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       stompClientRef.current = null;
     }
 
+    // Cancela Mock Server se estiver tentando conectar
+    if (mockAdapterRef.current) {
+      mockAdapterRef.current.disconnect();
+      mockAdapterRef.current = null;
+    }
+
     setStatus("disconnected");
     onLog({
       type: "INFO",
@@ -157,7 +173,7 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
 
   /**
    * Conecta ao servidor WebSocket
-   * @param url URL do servidor WebSocket
+   * @param url URL do servidor WebSocket ou mock://preset-name
    * @param type Tipo de conexão (websocket puro ou STOMP)
    * @param token Token de autenticação (opcional, apenas para STOMP)
    * @param customHeaders Headers customizados (opcional, apenas para STOMP)
@@ -180,6 +196,63 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       // Armazena o token e headers customizados para uso nas mensagens
       authTokenRef.current = token;
       customHeadersRef.current = customHeaders || {};
+
+      // Detecta se é uma URL de mock (formato: mock://preset-name)
+      if (url.startsWith("mock://")) {
+        const presetName = url.replace("mock://", "") as MockPresetType;
+        console.log(`[Mock] Conectando ao mock server: ${presetName}`);
+
+        // Cria o mock adapter
+        const mockAdapter = new MockServerAdapter({
+          preset: presetName,
+          latency: 50,
+          messageRate: presetName === "stress" ? 10 : 1,
+          autoRespond: true,
+        });
+
+        mockAdapterRef.current = mockAdapter;
+
+        // Conecta ao mock
+        mockAdapter
+          .connect(
+            (data) => {
+              // Callback para mensagens recebidas
+              onLog({
+                type: "MESSAGE",
+                message: "Mensagem recebida do Mock Server",
+                data: data,
+              });
+            },
+            (status) => {
+              // Callback para mudança de status
+              if (status === "connected") {
+                clearConnectionTimeout();
+                setStatus("connected");
+              } else if (status === "error") {
+                clearConnectionTimeout();
+                setStatus("error");
+              } else if (status === "disconnected") {
+                setStatus("disconnected");
+              }
+            }
+          )
+          .then(() => {
+            onLog({
+              type: "INFO",
+              message: `Mock Server conectado: ${presetName}`,
+            });
+          })
+          .catch((error) => {
+            clearConnectionTimeout();
+            setStatus("error");
+            onLog({
+              type: "ERROR",
+              message: `Erro ao conectar ao Mock Server: ${error}`,
+            });
+          });
+
+        return; // Retorna aqui para não executar lógica de conexão real
+      }
 
       // Configura timeout de conexão (30 segundos)
       clearConnectionTimeout();
@@ -526,6 +599,29 @@ export function useWebSocket({ onLog }: UseWebSocketParams) {
       destination?: string,
       headers?: Record<string, string>,
     ) => {
+      // Verifica se está usando Mock Server
+      if (mockAdapterRef.current) {
+        if (mockAdapterRef.current.getStatus() !== "connected") {
+          onLog({ type: "ERROR", message: "Mock Server não está conectado" });
+          return;
+        }
+
+        try {
+          mockAdapterRef.current.send(message);
+          onLog({
+            type: "SENT",
+            message: "Mensagem enviada ao Mock Server",
+            data: message,
+          });
+        } catch (error) {
+          onLog({
+            type: "ERROR",
+            message: `Erro ao enviar mensagem ao Mock Server: ${error}`,
+          });
+        }
+        return;
+      }
+
       if (connectionType === "websocket") {
         if (!wsRef.current) {
           onLog({ type: "ERROR", message: "WebSocket não inicializado" });
