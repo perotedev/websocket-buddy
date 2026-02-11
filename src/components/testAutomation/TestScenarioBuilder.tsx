@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Trash2, Download, Play, Copy, FileText, Braces, CheckCircle2, Square, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Download, Play, Copy, FileText, Braces, CheckCircle2, Square, AlertCircle, Loader2 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import CodeMirror from '@uiw/react-codemirror';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
@@ -329,7 +329,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
             >
               {isRunning ? (
                 <>
-                  <Square className="h-4 w-4 mr-2 animate-pulse" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Executando...
                 </>
               ) : (
@@ -347,7 +347,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
                 size="sm"
                 className="bg-green-600 hover:bg-green-700"
               >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <Square className="h-4 w-4 mr-2" />
                 Finalizar Teste
               </Button>
             )}

@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code, Wifi, WifiOff, Download, Braces } from 'lucide-react';
+import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code, Wifi, WifiOff, Download, Braces, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useTheme } from '@/hooks/useTheme';
 import CodeMirror from '@uiw/react-codemirror';
@@ -761,7 +761,7 @@ const TestAutomation = () => {
                       >
                         {isRunning ? (
                           <>
-                            <Square className="h-4 w-4 mr-2 animate-pulse" />
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             Executando...
                           </>
                         ) : (
@@ -777,7 +777,7 @@ const TestAutomation = () => {
                           variant="default"
                           className="bg-green-600 hover:bg-green-700"
                         >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          <Square className="h-4 w-4 mr-2" />
                           Finalizar Teste
                         </Button>
                       )}
