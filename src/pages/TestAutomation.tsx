@@ -554,14 +554,8 @@ const TestAutomation = () => {
             {/* Coluna Esquerda - Builder / Editor */}
             <div className="space-y-4">
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Cenário de Teste</CardTitle>
-                  <CardDescription>
-                    Crie visualmente ou edite o JSON do teste
-                  </CardDescription>
-                </CardHeader>
                 <CardContent>
-                  <Tabs defaultValue="builder" className="w-full">
+                  <Tabs defaultValue="builder" className="w-full mt-4">
                     <TabsList className="grid w-full grid-cols-2 mb-4">
                       <TabsTrigger value="builder" className="text-xs">
                         <Wrench className="h-3 w-3 mr-2" />
