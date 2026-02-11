@@ -7,9 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { ConnectionType } from "@/hooks/useWebSocket";
 import { useTheme } from "@/hooks/useTheme";
-import { Send, FileText, Braces } from "lucide-react";
+import { Send, FileText, Braces, Plus } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter } from "@codemirror/lint";
@@ -158,7 +166,18 @@ export function MessagePanel({
     [theme],
   );
 
-  const [showHeaders, setShowHeaders] = useState(false);
+  const [headersDialogOpen, setHeadersDialogOpen] = useState(false);
+
+  // Conta headers válidos (tenta parsear JSON)
+  const headerCount = useMemo(() => {
+    if (!headers.trim()) return 0;
+    try {
+      const parsed = JSON.parse(headers);
+      return Object.keys(parsed).length;
+    } catch {
+      return 0;
+    }
+  }, [headers]);
 
   // Handler para enviar mensagem
   const handleSend = () => {
@@ -217,9 +236,33 @@ export function MessagePanel({
       {/* Campo de mensagem */}
       <div className="flex-1 flex flex-col gap-1 min-h-0 overflow-hidden">
         <div className="flex items-center justify-between flex-shrink-0">
-          <Label htmlFor="message" className="text-xs font-medium uppercase">
-            Mensagem
-          </Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="message" className="text-xs font-medium uppercase">
+              Mensagem
+            </Label>
+            {connectionType === "stomp" && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setHeadersDialogOpen(true)}
+                  disabled={!isConnected}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Headers</span>
+                </button>
+                {headerCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-1.5 cursor-pointer hover:bg-secondary/80"
+                    onClick={() => setHeadersDialogOpen(true)}
+                  >
+                    +{headerCount}
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
           {/* Toggle entre Raw e JSON */}
           <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
             <Button
@@ -304,31 +347,50 @@ export function MessagePanel({
         </p>
       </div>
 
-      {/* Headers STOMP (opcional) */}
+      {/* Dialog de Headers STOMP */}
       {connectionType === "stomp" && (
-        <div className="space-y-1 flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowHeaders(!showHeaders)}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-          >
-            {showHeaders ? "Ocultar headers" : "+ Headers (opcional)"}
-          </button>
-          {showHeaders && (
-            <>
-              <Textarea
-                value={headers}
-                onChange={(e) => setHeaders(e.target.value)}
-                placeholder='{"custom-header": "valor"}'
-                disabled={!isConnected}
-                className="font-mono text-xs min-h-12 resize-none"
-              />
+        <Dialog open={headersDialogOpen} onOpenChange={setHeadersDialogOpen}>
+          <DialogContent className="max-w-[488px]">
+            <DialogHeader>
+              <DialogTitle className="text-sm uppercase">Headers da Mensagem</DialogTitle>
+              <DialogDescription className="text-xs">
+                Headers customizados enviados junto com a mensagem STOMP.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Headers (JSON)</Label>
+              <div
+                className={`border border-border rounded-md overflow-hidden ${!isConnected ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <CodeMirror
+                  key={`headers-cm-${editorKey}-${theme}`}
+                  value={headers}
+                  onChange={(value) => setHeaders(value)}
+                  extensions={theme === "dark" ? darkExtensions : lightExtensions}
+                  theme={theme === "dark" ? blackTheme : "light"}
+                  placeholder='{"custom-header": "valor"}'
+                  height="150px"
+                  basicSetup={{
+                    lineNumbers: true,
+                    highlightActiveLineGutter: true,
+                    foldGutter: true,
+                    bracketMatching: true,
+                    closeBrackets: true,
+                    autocompletion: true,
+                    highlightActiveLine: false,
+                    syntaxHighlighting: true,
+                  }}
+                  style={{ fontSize: "12px" }}
+                  readOnly={!isConnected}
+                  editable={isConnected}
+                />
+              </div>
               <p className="text-[10px] text-muted-foreground">
-                Formato JSON. content-type é adicionado automaticamente
+                Formato JSON. content-type é adicionado automaticamente.
               </p>
-            </>
-          )}
-        </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Botão de enviar */}

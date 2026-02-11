@@ -1,12 +1,12 @@
 /**
  * Painel de ações - Agrupa inscrições e envio de mensagens com tabs
  */
-import { useState } from "react";
 import { SubscriptionPanel } from "./SubscriptionPanel";
 import { MessagePanel } from "./MessagePanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubscribedTopic, ConnectionType } from "@/hooks/useWebSocket";
 import { Radio, Send } from "lucide-react";
+import { useWebSocketContext } from "@/contexts/WebSocketContext";
 
 interface ActionPanelProps {
   subscribedTopics: SubscribedTopic[];
@@ -21,8 +21,6 @@ interface ActionPanelProps {
   ) => void;
 }
 
-type MessageFormat = "raw" | "json";
-
 export function ActionPanel({
   subscribedTopics,
   connectionType,
@@ -31,17 +29,16 @@ export function ActionPanel({
   onUnsubscribe,
   onSendMessage,
 }: ActionPanelProps) {
-  // Estado elevado para persistir entre mudanças de tab
-  const [message, setMessage] = useState("");
-  const [destination, setDestination] = useState("");
-  const [headers, setHeaders] = useState("");
-  const [messageFormat, setMessageFormat] = useState<MessageFormat>("json");
+  // Estado persistido no contexto global
+  const { actionPanelState, setActionPanelState } = useWebSocketContext();
+  const { message, destination, headers, messageFormat, activeTab } = actionPanelState;
 
   return (
     <div className="border border-border shadow-sm h-full flex flex-col">
       <div className="p-2 sm:p-3 flex-1 flex flex-col min-h-0">
         <Tabs
-          defaultValue="subscriptions"
+          value={activeTab}
+          onValueChange={(value) => setActionPanelState({ activeTab: value })}
           className="flex-1 flex flex-col min-h-0"
         >
           <TabsList className="w-full grid grid-cols-2 h-8 sm:h-10 flex-shrink-0">
@@ -85,13 +82,13 @@ export function ActionPanel({
                 isConnected={isConnected}
                 onSendMessage={onSendMessage}
                 message={message}
-                setMessage={setMessage}
+                setMessage={(v) => setActionPanelState({ message: v })}
                 destination={destination}
-                setDestination={setDestination}
+                setDestination={(v) => setActionPanelState({ destination: v })}
                 headers={headers}
-                setHeaders={setHeaders}
+                setHeaders={(v) => setActionPanelState({ headers: v })}
                 messageFormat={messageFormat}
-                setMessageFormat={setMessageFormat}
+                setMessageFormat={(v) => setActionPanelState({ messageFormat: v })}
               />
             </div>
           </TabsContent>
