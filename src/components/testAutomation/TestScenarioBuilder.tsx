@@ -211,7 +211,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
               disabled={isRunning}
             />
             <Label htmlFor="manual-validation" className="text-xs cursor-pointer">
-              Validação Manual (pausar antes das validações)
+              Finalização Manual (validações executam neste momento)
             </Label>
           </div>
         </div>
