@@ -168,7 +168,9 @@ const TestAutomation = () => {
       getSubscribedTopics: () => subscribedTopics,
       getReceivedMessages: () => logs.map(l => l.data || l.message),
       onLog: (message: string, type?: string) => {
-        setTestLogs(prev => [...prev, `[${type || 'INFO'}] ${message}`]);
+        const prefix = `[${type || 'INFO'}]`;
+        const lines = message.split('\n').filter(l => l.trim() !== '');
+        setTestLogs(prev => [...prev, ...lines.map(l => `${prefix} ${l}`)]);
       }
     };
 
@@ -601,7 +603,10 @@ const TestAutomation = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">Resultado do Teste</CardTitle>
                       <Badge
-                        variant={testResult.status === 'passed' ? 'default' : 'destructive'}
+                        variant="outline"
+                        className={testResult.status === 'passed'
+                          ? 'border-green-500 bg-green-500/10 text-green-600 dark:text-green-400'
+                          : 'border-red-500 bg-red-500/10 text-red-600 dark:text-red-400'}
                       >
                         {testResult.status === 'passed' ? (
                           <CheckCircle2 className="h-3 w-3 mr-1" />
