@@ -73,8 +73,7 @@ function builderStateToJson(state: TestBuilderState): string {
   });
 
   return JSON.stringify({
-    name: state.name || 'Cenário sem nome',
-    description: state.description || '',
+    name: state.name || 'Teste WebSocket',
     actions: [...testActions, ...testAssertions],
   }, null, 2);
 }
@@ -296,7 +295,26 @@ const TestAutomation = () => {
       },
       getConnectionStatus: () => status,
       getSubscribedTopics: () => subscribedTopics,
-      getReceivedMessages: () => logs.filter(l => l.type === 'MESSAGE').map(l => l.data || l.message),
+      getReceivedMessages: (startTime?: Date) => {
+        // Filtra mensagens apenas do período do teste (após startTime)
+        const filteredLogs = logs.filter(l => l.type === 'MESSAGE');
+
+        if (!startTime) {
+          return filteredLogs.map(l => l.data || l.message);
+        }
+
+        // Converte startTime para timestamp numérico para comparação confiável
+        const startTimestamp = startTime.getTime();
+
+        return filteredLogs
+          .filter(l => {
+            const logTimestamp = l.timestamp instanceof Date
+              ? l.timestamp.getTime()
+              : new Date(l.timestamp).getTime();
+            return logTimestamp >= startTimestamp;
+          })
+          .map(l => l.data || l.message);
+      },
       onLog: (message: string, type?: string) => {
         const prefix = `[${type || 'INFO'}]`;
         const lines = message.split('\n').filter(l => l.trim() !== '');

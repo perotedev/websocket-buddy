@@ -22,7 +22,7 @@ export interface TestRunnerCallbacks {
   sendMessage: (message: string, destination?: string) => Promise<void>;
   getConnectionStatus: () => string;
   getSubscribedTopics: () => Array<{ id: string; destination: string }>;
-  getReceivedMessages: () => string[];
+  getReceivedMessages: (startTime?: Date) => string[];
   onLog: (message: string, type?: string) => void;
 }
 
@@ -31,6 +31,7 @@ export class TestRunner {
   private context: TestExecutionContext;
   private isRunning: boolean = false;
   private shouldStop: boolean = false;
+  private testStartTime: Date | null = null;
 
   constructor(callbacks: TestRunnerCallbacks) {
     this.callbacks = callbacks;
@@ -62,6 +63,7 @@ export class TestRunner {
     this.context = this.createContext();
 
     const startTime = new Date();
+    this.testStartTime = startTime; // Armazena o timestamp de início do teste
     const actionResults: TestActionResult[] = [];
 
     // Carrega variáveis do cenário
@@ -371,7 +373,8 @@ export class TestRunner {
     type: AssertionType,
     expected: any
   ): { passed: boolean; message: string; data?: any } {
-    const messages = this.callbacks.getReceivedMessages();
+    // Filtra mensagens apenas do período do teste atual
+    const messages = this.callbacks.getReceivedMessages(this.testStartTime || undefined);
     const status = this.callbacks.getConnectionStatus();
     const topics = this.callbacks.getSubscribedTopics();
 

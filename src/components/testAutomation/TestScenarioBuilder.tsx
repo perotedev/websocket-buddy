@@ -140,8 +140,7 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
     });
 
     return {
-      name: name || 'Cenário sem nome',
-      description: description || '',
+      name: name || 'Teste WebSocket',
       actions: [...testActions, ...testAssertions],
     };
   };
@@ -180,24 +179,13 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
         {/* Informações do Cenário */}
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="test-name" className="text-xs">Nome do Teste</Label>
+            <Label htmlFor="test-name" className="text-xs">Nome do Teste (opcional)</Label>
             <Input
               id="test-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Teste de conexão básica"
+              placeholder="Meu Teste"
               className="text-xs h-8"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="test-desc" className="text-xs">Descrição (opcional)</Label>
-            <Textarea
-              id="test-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Verifica se a conexão funciona corretamente..."
-              className="text-xs min-h-[60px]"
             />
           </div>
         </div>
@@ -302,7 +290,7 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
         <div className="flex gap-2 pt-2">
           <Button
             onClick={runTest}
-            disabled={!name || actions.length === 0}
+            disabled={actions.length === 0}
             size="sm"
             className="flex-1"
           >
@@ -312,7 +300,7 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
 
           <Button
             onClick={exportJSON}
-            disabled={!name || actions.length === 0}
+            disabled={actions.length === 0}
             size="sm"
             variant="outline"
           >
@@ -322,7 +310,7 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
 
           <Button
             onClick={copyJSON}
-            disabled={!name || actions.length === 0}
+            disabled={actions.length === 0}
             size="sm"
             variant="outline"
           >
