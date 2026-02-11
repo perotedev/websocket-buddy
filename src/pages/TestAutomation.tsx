@@ -3,7 +3,7 @@
  * Importa e executa cenários de teste automatizados
  * Usa a conexão ativa do contexto global (WebSocketContext)
  */
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,8 +31,115 @@ import { TestScenario, TestScenarioResult } from '@/lib/testAutomation/types';
 import { TestRunner, TestRunnerCallbacks } from '@/lib/testAutomation/TestRunner';
 import { ConnectionType } from '@/hooks/useWebSocket';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import type { TestBuilderState, TestBuilderActionItem, TestBuilderAssertItem } from '@/contexts/WebSocketContext';
 import { ConnectionPanel } from '@/components/ConnectionPanel';
 import { TestScenarioBuilder } from '@/components/testAutomation/TestScenarioBuilder';
+
+// Converte o estado do builder visual para JSON string do TestScenario
+function builderStateToJson(state: TestBuilderState): string {
+  const testActions = state.actions.map(({ type, params }) => {
+    const action: any = { type };
+    if (type === 'send') {
+      if (params.message) action.message = params.message;
+      if (params.destination) action.destination = params.destination;
+    } else if (type === 'subscribe' || type === 'unsubscribe') {
+      if (params.destination) action.destination = params.destination;
+    } else if (type === 'wait') {
+      action.duration = params.ms || 1000;
+    } else if (type === 'wait-for-message') {
+      action.type = 'wait';
+      action.duration = params.timeout || 5000;
+    }
+    return action;
+  });
+
+  const testAssertions = state.assertions.map(({ type, params }) => {
+    const action: any = { type: 'assert' };
+    if (type === 'message-received') action.assertionType = 'message_received';
+    else if (type === 'message-contains') {
+      action.assertionType = 'message_contains';
+      if (params.expected) action.expected = params.expected;
+    } else if (type === 'no-errors') {
+      action.assertionType = 'status_is';
+      action.expected = 'connected';
+    } else if (type === 'connection-closed') {
+      action.assertionType = 'status_is';
+      action.expected = 'disconnected';
+    } else if (type === 'latency') {
+      action.assertionType = 'message_received';
+      action.timeout = params.maxLatency || 1000;
+    }
+    return action;
+  });
+
+  return JSON.stringify({
+    name: state.name || 'Cenário sem nome',
+    description: state.description || '',
+    actions: [...testActions, ...testAssertions],
+  }, null, 2);
+}
+
+// Converte JSON string do TestScenario para o estado do builder visual
+function jsonToBuilderState(jsonStr: string): TestBuilderState | null {
+  try {
+    const scenario = JSON.parse(jsonStr);
+    if (!scenario || !Array.isArray(scenario.actions)) return null;
+
+    const actions: TestBuilderActionItem[] = [];
+    const assertions: TestBuilderAssertItem[] = [];
+
+    for (const action of scenario.actions) {
+      if (action.type === 'assert') {
+        let type: TestBuilderAssertItem['type'] = 'message-received';
+        const params: Record<string, string | number | boolean> = {};
+
+        switch (action.assertionType) {
+          case 'message_received':
+            if (action.timeout) {
+              type = 'latency';
+              params.maxLatency = action.timeout;
+            } else {
+              type = 'message-received';
+            }
+            break;
+          case 'message_contains':
+            type = 'message-contains';
+            if (action.expected) params.expected = String(action.expected);
+            break;
+          case 'status_is':
+            if (action.expected === 'connected') type = 'no-errors';
+            else if (action.expected === 'disconnected') type = 'connection-closed';
+            break;
+        }
+
+        assertions.push({ id: crypto.randomUUID(), type, params });
+      } else if (['send', 'subscribe', 'unsubscribe', 'wait'].includes(action.type)) {
+        const params: Record<string, string | number | boolean> = {};
+        const type: TestBuilderActionItem['type'] = action.type;
+
+        if (action.type === 'send') {
+          if (action.message) params.message = String(action.message);
+          if (action.destination) params.destination = String(action.destination);
+        } else if (action.type === 'subscribe' || action.type === 'unsubscribe') {
+          if (action.destination) params.destination = String(action.destination);
+        } else if (action.type === 'wait') {
+          params.ms = action.duration || 1000;
+        }
+
+        actions.push({ id: crypto.randomUUID(), type, params });
+      }
+    }
+
+    return {
+      name: scenario.name || '',
+      description: scenario.description || '',
+      actions,
+      assertions,
+    };
+  } catch {
+    return null;
+  }
+}
 
 const TestAutomation = () => {
   const [scenarioJson, setScenarioJson] = useState('');
@@ -73,6 +180,7 @@ const TestAutomation = () => {
   const testRunnerRef = useRef<TestRunner | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const jsonEditorIsSourceRef = useRef(false);
 
   // Usa a conexão global do contexto
   const {
@@ -86,7 +194,30 @@ const TestAutomation = () => {
     subscribe,
     unsubscribe,
     sendMessage,
+    testBuilderState,
+    setTestBuilderState,
   } = useWebSocketContext();
+
+  // Sync: builder visual → JSON editor
+  useEffect(() => {
+    if (jsonEditorIsSourceRef.current) return;
+    if (!testBuilderState.name && testBuilderState.actions.length === 0 && testBuilderState.assertions.length === 0) return;
+    const jsonStr = builderStateToJson(testBuilderState);
+    setScenarioJson(jsonStr);
+    handleParseScenario(jsonStr);
+  }, [testBuilderState]);
+
+  // Handler unificado para mudanças no JSON (editor, import, exemplo)
+  const handleJsonContentChange = useCallback((value: string) => {
+    jsonEditorIsSourceRef.current = true;
+    setScenarioJson(value);
+    handleParseScenario(value);
+    const state = jsonToBuilderState(value);
+    if (state) {
+      setTestBuilderState(state);
+    }
+    setTimeout(() => { jsonEditorIsSourceRef.current = false; }, 0);
+  }, [setTestBuilderState]);
 
   // Auto-scroll dos logs de teste (apenas durante execução)
   useEffect(() => {
@@ -115,8 +246,7 @@ const TestAutomation = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      setScenarioJson(content);
-      handleParseScenario(content);
+      handleJsonContentChange(content);
     };
     reader.readAsText(file);
   };
@@ -256,8 +386,7 @@ const TestAutomation = () => {
     };
 
     const json = exportTestScenario(example);
-    setScenarioJson(json);
-    handleParseScenario(json);
+    handleJsonContentChange(json);
   };
 
   const isConnected = status === 'connected';
@@ -498,10 +627,7 @@ const TestAutomation = () => {
                   {editorFormat === 'raw' ? (
                     <Textarea
                       value={scenarioJson}
-                      onChange={(e) => {
-                        setScenarioJson(e.target.value);
-                        handleParseScenario(e.target.value);
-                      }}
+                      onChange={(e) => handleJsonContentChange(e.target.value)}
                       placeholder='{\n  "name": "Meu Teste",\n  "actions": [\n    ...\n  ]\n}'
                       className="font-mono text-xs min-h-[400px]"
                     />
@@ -510,10 +636,7 @@ const TestAutomation = () => {
                       <CodeMirror
                         key={`scenario-cm-${editorKey}-${theme}`}
                         value={scenarioJson}
-                        onChange={(value) => {
-                          setScenarioJson(value);
-                          handleParseScenario(value);
-                        }}
+                        onChange={handleJsonContentChange}
                         extensions={theme === 'dark' ? darkExtensions : lightExtensions}
                         theme={theme === 'dark' ? blackTheme : 'light'}
                         placeholder='{"name": "Meu Teste", "actions": [...]}'
