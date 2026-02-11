@@ -134,16 +134,34 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
         const content = event.target?.result as string;
         const profile = importConnectionProfile(content);
 
-        setUrl(profile.url || '');
-        setType(profile.type || 'websocket');
-        setToken(profile.token || '');
+        const profileUrl = profile.url || '';
+        const profileType = profile.type || 'websocket';
+        const profileToken = profile.token || '';
+        const profileHeaders = (profile.headers && Object.keys(profile.headers).length > 0)
+          ? profile.headers
+          : undefined;
 
-        if (profile.url && !profile.url.startsWith('mock://')) {
+        // Atualiza connectionConfig no contexto (dispara os useEffects de sync)
+        setConnectionConfig({
+          url: profileUrl,
+          type: profileType,
+          token: profileToken || undefined,
+          headers: profileHeaders,
+        });
+
+        // Atualiza estados locais diretamente também
+        setUrl(profileUrl);
+        setType(profileType);
+        setToken(profileToken);
+
+        if (profileUrl.startsWith('mock://')) {
+          setServerMode(profileUrl.replace('mock://', ''));
+        } else {
           setServerMode('real');
         }
 
-        if (profile.headers && Object.keys(profile.headers).length > 0) {
-          const headers: CustomHeader[] = Object.entries(profile.headers).map(([key, value]) => ({
+        if (profileHeaders) {
+          const headers: CustomHeader[] = Object.entries(profileHeaders).map(([key, value]) => ({
             id: crypto.randomUUID(),
             key,
             value,

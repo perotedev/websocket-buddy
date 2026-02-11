@@ -30,7 +30,7 @@ import {
 } from '@/lib/export';
 
 const Export = () => {
-  const { logs, stats, snapshots, connectionInfo } = useWebSocketContext();
+  const { logs, stats, snapshots, connectionInfo, connectionConfig } = useWebSocketContext();
 
   const [connectionName, setConnectionName] = useState('');
   const [connectionDescription, setConnectionDescription] = useState('');
@@ -87,8 +87,10 @@ const Export = () => {
 
     const profile: ConnectionProfile = {
       name: connectionName,
-      url: connectionInfo?.url || '',
-      type: (connectionInfo?.connectionType as 'websocket' | 'stomp') || 'websocket',
+      url: connectionConfig.url || connectionInfo?.url || '',
+      type: connectionConfig.type || (connectionInfo?.connectionType as 'websocket' | 'stomp') || 'websocket',
+      token: connectionConfig.token || '',
+      headers: connectionConfig.headers || {},
       description: connectionDescription,
       createdAt: new Date().toISOString(),
       tags: []
