@@ -450,6 +450,8 @@ const TestAutomation = () => {
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #333; padding: 20px; }
     .container { max-width: 900px; margin: 0 auto; }
     .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 24px; border-radius: 8px; margin-bottom: 20px; }
+    .header .app-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; opacity: 0.9; }
+    .header .app-brand span { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
     .header h1 { font-size: 20px; margin-bottom: 6px; }
     .header p { opacity: 0.9; font-size: 13px; }
     .status-badge { display: inline-block; background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; margin-top: 8px; }
@@ -472,6 +474,10 @@ const TestAutomation = () => {
 <body>
   <div class="container">
     <div class="header">
+      <div class="app-brand">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        <span>WebSocket Buddy</span>
+      </div>
       <h1>${testResult.scenario.name}</h1>
       ${testResult.scenario.description ? `<p>${testResult.scenario.description}</p>` : ''}
       <div class="status-badge">${statusLabel}</div>

@@ -173,7 +173,7 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Criar Cenário de Teste</CardTitle>
+        <CardTitle>Cenário de Teste</CardTitle>
         <CardDescription>Monte seu teste visualmente - o JSON é gerado automaticamente</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -398,14 +398,14 @@ function ActionEditor({
       <div className="space-y-2">
         {action.type === 'send' && (
           <>
-            <Input
-              value={action.params.destination || ''}
-              onChange={(e) => onUpdate('destination', e.target.value)}
-              placeholder="Destino STOMP (ex: /app/chat) - opcional para WebSocket puro"
-              className="text-xs h-7"
-            />
-            <div className="flex items-center justify-end">
-              <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
+            <div className="flex items-center gap-2">
+              <Input
+                value={action.params.destination || ''}
+                onChange={(e) => onUpdate('destination', e.target.value)}
+                placeholder="/app/chat (opcional para WebSocket puro)"
+                className="text-xs h-7 flex-1"
+              />
+              <div className="flex items-center gap-1 border border-border rounded-md p-0.5 flex-shrink-0">
                 <Button onClick={() => setMessageFormat('raw')} variant={messageFormat === 'raw' ? 'default' : 'ghost'} size="sm" className="h-5 text-[10px] gap-1 px-2">
                   <FileText className="h-3 w-3" /><span>Raw</span>
                 </Button>
