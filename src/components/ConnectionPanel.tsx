@@ -2,7 +2,7 @@
  * Painel de configuração de conexão WebSocket
  * Permite configurar URL, tipo de conexão e controlar a conexão
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,8 +24,9 @@ import {
 } from '@/components/ui/dialog';
 import { ConnectionStatus, ConnectionType } from '@/hooks/useWebSocket';
 import { MOCK_PRESETS } from '@/lib/mockServer';
-import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2, X, KeyRound } from 'lucide-react';
+import { Plug, Unplug, Wifi, WifiOff, AlertCircle, Loader2, Plus, Trash2, X, KeyRound, Download } from 'lucide-react';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import { importConnectionProfile } from '@/lib/export';
 
 // Interface para header customizado
 interface CustomHeader {
@@ -43,6 +44,8 @@ interface ConnectionPanelProps {
 
 export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConnection }: ConnectionPanelProps) {
   const { connectionConfig, setConnectionConfig } = useWebSocketContext();
+
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   // Estados locais inicializados com valores do contexto
   const [url, setUrl] = useState(connectionConfig.url);
@@ -118,6 +121,42 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
 
       onConnect(url.trim(), type, token.trim() || undefined, hasCustomHeaders ? headersObj : undefined);
     }
+  };
+
+  // Handler para importar perfil de conexão
+  const handleImportProfile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const profile = importConnectionProfile(content);
+
+        setUrl(profile.url || '');
+        setType(profile.type || 'websocket');
+        setToken(profile.token || '');
+
+        if (profile.url && !profile.url.startsWith('mock://')) {
+          setServerMode('real');
+        }
+
+        if (profile.headers && Object.keys(profile.headers).length > 0) {
+          const headers: CustomHeader[] = Object.entries(profile.headers).map(([key, value]) => ({
+            id: crypto.randomUUID(),
+            key,
+            value,
+          }));
+          headers.push({ id: crypto.randomUUID(), key: '', value: '' });
+          setCustomHeaders(headers);
+        }
+      } catch (error) {
+        console.error('Erro ao importar perfil:', error);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   // Atualizar header e gerenciar linhas automaticamente
@@ -221,7 +260,26 @@ export function ConnectionPanel({ status, onConnect, onDisconnect, onCancelConne
   return (
     <div className="border border-border p-2 sm:p-3 shadow-sm">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Conexão</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide">Conexão</h2>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportProfile}
+          />
+          <button
+            type="button"
+            onClick={() => importFileRef.current?.click()}
+            disabled={isConnected || isConnecting}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Importar perfil de conexão"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Importar</span>
+          </button>
+        </div>
         <StatusIndicator />
       </div>
 
