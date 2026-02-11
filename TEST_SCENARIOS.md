@@ -1,20 +1,24 @@
-# Test Scenarios - Documentação
+﻿# Test Scenarios - Documentação
 
-Este documento descreve como criar cenários de teste automatizados para o WebSocket Buddy usando arquivos JSON.
+Este documento descreve como criar cenários de teste automatizados no WebSocket Buddy usando arquivos JSON. Os cenários são executados na página "Test Automation" e usam a conexão ativa do app.
 
-## 📋 Índice
+## Índice
 
 - [Estrutura Básica](#estrutura-básica)
-- [Tipos de Ações](#tipos-de-ações)
+- [Campos e Configuração](#campos-e-configuração)
+- [Ações Suportadas](#ações-suportadas)
 - [Assertions](#assertions)
 - [Variáveis](#variáveis)
+- [Limitações e Comportamento Atual](#limitações-e-comportamento-atual)
 - [Exemplos Completos](#exemplos-completos)
+- [Como Usar](#como-usar)
+- [Schema JSON (Simplificado)](#schema-json-simplificado)
 
 ---
 
 ## Estrutura Básica
 
-Um cenário de teste é um arquivo JSON com a seguinte estrutura:
+Um cenário de teste é um arquivo JSON. JSON não aceita comentários.
 
 ```json
 {
@@ -22,11 +26,11 @@ Um cenário de teste é um arquivo JSON com a seguinte estrutura:
   "description": "Descrição opcional do que o teste faz",
   "version": "1.0.0",
   "author": "Seu Nome",
-  "tags": ["tag1", "tag2"],
+  "tags": ["smoke", "stomp"],
 
   "config": {
-    "timeout": 5000,
     "stopOnError": true,
+    "timeout": 5000,
     "retryOnError": 0,
     "logLevel": "normal"
   },
@@ -37,159 +41,129 @@ Um cenário de teste é um arquivo JSON com a seguinte estrutura:
   },
 
   "actions": [
-    // Array de ações a serem executadas
+    { "type": "connect", "url": "${SERVER_URL}", "connectionType": "stomp", "token": "${AUTH_TOKEN}" },
+    { "type": "subscribe", "destination": "/topic/updates" },
+    { "type": "send", "destination": "/app/ping", "message": "{\"type\":\"ping\"}" },
+    { "type": "wait", "duration": 1000 },
+    { "type": "assert", "assertionType": "message_received" },
+    { "type": "disconnect" }
   ]
 }
 ```
 
-### Campos Principais
+---
 
-- **name** (obrigatório): Nome do cenário
-- **description** (opcional): Descrição do teste
-- **config** (opcional): Configurações do teste
-  - `timeout`: Timeout padrão para ações em ms
-  - `stopOnError`: Parar ao encontrar erro (default: true)
-  - `retryOnError`: Número de tentativas em caso de erro
-  - `logLevel`: "verbose", "normal" ou "quiet"
-- **variables** (opcional): Variáveis que podem ser usadas nas ações com `${NOME_VARIAVEL}`
-- **actions** (obrigatório): Array de ações a executar
+## Campos e Configuração
+
+- `name` (obrigatório): nome do cenário.
+- `description` (opcional): descrição do teste.
+- `version` (opcional): versão do cenário.
+- `author` (opcional): autor do cenário.
+- `tags` (opcional): tags para organização.
+- `config` (opcional): configurações globais.
+- `variables` (opcional): variáveis para uso em ações.
+- `actions` (obrigatório): lista de ações em ordem de execução.
+
+Configurações disponíveis:
+
+- `stopOnError`: se `true`, interrompe na primeira falha.
+- `timeout`, `retryOnError`, `logLevel`: aceitos no JSON, mas não alteram a execução atualmente.
 
 ---
 
-## Tipos de Ações
+## Ações Suportadas
 
-### 1. Connect - Conectar ao Servidor
+### connect
 
-Conecta ao servidor WebSocket/STOMP.
+Conecta ao servidor ou a um mock.
 
 ```json
-{
-  "type": "connect",
-  "description": "Conectar ao servidor de produção",
-  "url": "${SERVER_URL}",
-  "connectionType": "stomp",
-  "token": "${AUTH_TOKEN}",
-  "headers": {
-    "Custom-Header": "valor"
-  }
-}
+{ "type": "connect", "url": "${SERVER_URL}", "connectionType": "stomp", "token": "${AUTH_TOKEN}" }
 ```
 
-**Campos:**
-- `url` (obrigatório): URL do servidor
-- `connectionType` (opcional): "websocket" ou "stomp" (default: "websocket")
-- `token` (opcional): Token de autenticação
-- `headers` (opcional): Headers customizados para STOMP
+- `url` (obrigatório): URL do servidor.
+- `connectionType` (opcional): "websocket" ou "stomp" (default "websocket").
+- `token` (opcional): usado em conexões STOMP.
 
-### 2. Disconnect - Desconectar
+Mocks disponíveis: `mock://echo`, `mock://chatbot`, `mock://stream`, `mock://stress`, `mock://notification`.
+
+Observação: os testes usam a conexão ativa do app. Se já estiver conectado, a ação `connect` não troca a conexão.
+
+### disconnect
 
 Desconecta do servidor.
 
 ```json
-{
-  "type": "disconnect",
-  "description": "Desconectar do servidor"
-}
+{ "type": "disconnect" }
 ```
 
-### 3. Subscribe - Inscrever em Tópico
+### subscribe
 
-Inscreve em um tópico/canal (STOMP).
+Inscreve em um tópico/canal (STOMP). Em WebSocket puro, a inscrição é apenas organizacional.
 
 ```json
-{
-  "type": "subscribe",
-  "description": "Inscrever no tópico de notificações",
-  "destination": "/topic/notifications"
-}
+{ "type": "subscribe", "destination": "/topic/notifications" }
 ```
 
-**Campos:**
-- `destination` (obrigatório): Destino do tópico
+- `destination` (obrigatório): destino do tópico.
 
-### 4. Unsubscribe - Cancelar Inscrição
+### unsubscribe
 
 Cancela inscrição em um tópico.
 
 ```json
-{
-  "type": "unsubscribe",
-  "description": "Cancelar inscrição do tópico",
-  "destination": "/topic/notifications"
-}
+{ "type": "unsubscribe", "destination": "/topic/notifications" }
 ```
 
-**Campos:**
-- `destination` (obrigatório): Destino do tópico
+- `destination` (obrigatório): destino do tópico.
 
-### 5. Send - Enviar Mensagem
+### send
 
 Envia uma mensagem.
 
 ```json
-{
-  "type": "send",
-  "description": "Enviar mensagem de teste",
-  "message": "{\"type\":\"greeting\",\"text\":\"Hello\"}",
-  "destination": "/app/chat",
-  "headers": {
-    "priority": "high"
-  }
-}
+{ "type": "send", "message": "{\"type\":\"greeting\",\"text\":\"Hello\"}", "destination": "/app/chat" }
 ```
 
-**Campos:**
-- `message` (obrigatório): Conteúdo da mensagem
-- `destination` (opcional): Destino (obrigatório para STOMP)
-- `headers` (opcional): Headers adicionais
+- `message` (obrigatório): conteúdo da mensagem.
+- `destination` (opcional): obrigatório para STOMP, opcional para WebSocket.
 
-### 6. Wait - Aguardar
+### wait
 
 Aguarda um tempo antes de continuar.
 
 ```json
-{
-  "type": "wait",
-  "description": "Aguardar resposta do servidor",
-  "duration": 2000
-}
+{ "type": "wait", "duration": 2000 }
 ```
 
-**Campos:**
-- `duration` (obrigatório): Tempo em milissegundos
+- `duration` (obrigatório): tempo em milissegundos.
 
-### 7. Assert - Validar
+### assert
 
 Valida uma condição.
 
 ```json
-{
-  "type": "assert",
-  "description": "Verificar se recebeu mensagem",
-  "assertionType": "message_received",
-  "timeout": 5000
-}
+{ "type": "assert", "assertionType": "message_contains", "expected": "success" }
 ```
 
-**Campos:**
-- `assertionType` (obrigatório): Tipo de validação (veja [Assertions](#assertions))
-- `expected` (opcional): Valor esperado
-- `timeout` (opcional): Timeout para a validação
+- `assertionType` (obrigatório): tipo de validação.
+- `expected` (opcional): valor esperado, depende do tipo de validação.
+- `timeout` (opcional): aceito no JSON, mas não é aplicado atualmente.
 
-### 8. Log - Log Customizado
+### log
 
-Adiciona um log customizado ao console.
+Adiciona uma mensagem ao log de execução.
 
 ```json
-{
-  "type": "log",
-  "description": "Log de checkpoint",
-  "message": "Chegou no checkpoint 1"
-}
+{ "type": "log", "message": "Checkpoint 1 alcançado" }
 ```
 
-**Campos:**
-- `message` (obrigatório): Mensagem do log
+- `message` (obrigatório): mensagem do log.
+
+Campos adicionais por ação:
+
+- `continueOnError` (opcional): quando `true`, a execução continua mesmo se a ação falhar (desde que `config.stopOnError` seja `true`).
+- `skipIf` (opcional): aceito no JSON, mas não é aplicado atualmente.
 
 ---
 
@@ -197,27 +171,22 @@ Adiciona um log customizado ao console.
 
 Tipos de validação disponíveis:
 
+### status_is
+
+Verifica o status da conexão.
+
+```json
+{ "type": "assert", "assertionType": "status_is", "expected": "connected" }
+```
+
+Valores esperados: "connected", "connecting", "disconnected", "error".
+
 ### message_received
 
 Verifica se pelo menos uma mensagem foi recebida.
 
 ```json
-{
-  "type": "assert",
-  "assertionType": "message_received"
-}
-```
-
-### message_contains
-
-Verifica se a última mensagem contém um texto.
-
-```json
-{
-  "type": "assert",
-  "assertionType": "message_contains",
-  "expected": "success"
-}
+{ "type": "assert", "assertionType": "message_received" }
 ```
 
 ### message_count
@@ -225,43 +194,42 @@ Verifica se a última mensagem contém um texto.
 Verifica a quantidade de mensagens recebidas.
 
 ```json
-{
-  "type": "assert",
-  "assertionType": "message_count",
-  "expected": 3
-}
+{ "type": "assert", "assertionType": "message_count", "expected": 3 }
 ```
 
-### status_is
+`expected` deve ser número.
 
-Verifica o status da conexão.
+### message_contains
+
+Verifica se alguma mensagem contém o texto esperado. O verificador tenta normalizar JSON e mensagens STOMP com `Headers/Body`.
 
 ```json
-{
-  "type": "assert",
-  "assertionType": "status_is",
-  "expected": "connected"
-}
+{ "type": "assert", "assertionType": "message_contains", "expected": "success" }
 ```
-
-Valores possíveis: "connected", "disconnected", "connecting", "error"
 
 ### json_valid
 
 Verifica se a última mensagem é um JSON válido.
 
 ```json
-{
-  "type": "assert",
-  "assertionType": "json_valid"
-}
+{ "type": "assert", "assertionType": "json_valid" }
 ```
+
+Observação: em mensagens STOMP o log inclui headers e body, então essa validação geralmente falha. Funciona melhor em WebSocket puro ou Mock.
+
+Tipos presentes nos tipos mas não implementados hoje: `message_matches`, `topic_subscribed`, `json_path`.
 
 ---
 
 ## Variáveis
 
-Use variáveis para reutilizar valores e facilitar manutenção:
+Use `${NOME}` para substituir valores. Atualmente as substituições são feitas em:
+
+- `url`, `token`, `destination`, `message` e `log.message`.
+
+Substituições não são aplicadas em `expected`, `config` ou outros campos.
+
+Exemplo:
 
 ```json
 {
@@ -270,277 +238,121 @@ Use variáveis para reutilizar valores e facilitar manutenção:
     "TOPIC": "/topic/updates",
     "USER_ID": "12345"
   },
-
   "actions": [
-    {
-      "type": "connect",
-      "url": "${BASE_URL}/ws"
-    },
-    {
-      "type": "subscribe",
-      "destination": "${TOPIC}"
-    },
-    {
-      "type": "send",
-      "message": "{\"userId\":\"${USER_ID}\"}",
-      "destination": "/app/register"
-    }
+    { "type": "connect", "url": "${BASE_URL}/ws" },
+    { "type": "subscribe", "destination": "${TOPIC}" },
+    { "type": "send", "destination": "/app/register", "message": "{\"userId\":\"${USER_ID}\"}" }
   ]
 }
 ```
 
 ---
 
+## Limitações e Comportamento Atual
+
+- A execução usa a conexão global do app. Se não houver conexão, o sistema solicita conexão antes de rodar o teste.
+- `connect` não troca a conexão se já estiver conectado.
+- `headers` em ações `connect` e `send` são aceitos no JSON, mas não são aplicados atualmente.
+- `timeout`, `retryOnError` e `logLevel` não alteram a execução.
+- `skipIf` não é avaliado.
+- `message_matches`, `topic_subscribed` e `json_path` ainda não são suportados.
+- No Builder Visual, "Aguardar Mensagem" gera uma ação `wait` simples; não há espera ativa por mensagem.
+
+---
+
 ## Exemplos Completos
 
-### Exemplo 1: Teste Básico de Echo
+### Exemplo 1: Echo com Mock
 
 ```json
 {
-  "name": "Echo Server Test",
-  "description": "Testa servidor echo básico",
+  "name": "Echo Mock Test",
+  "description": "Testa echo usando mock integrado",
   "version": "1.0.0",
-
   "actions": [
-    {
-      "type": "connect",
-      "url": "wss://echo.websocket.org",
-      "connectionType": "websocket"
-    },
-    {
-      "type": "wait",
-      "duration": 1000
-    },
-    {
-      "type": "assert",
-      "assertionType": "status_is",
-      "expected": "connected"
-    },
-    {
-      "type": "send",
-      "message": "Hello Echo!"
-    },
-    {
-      "type": "wait",
-      "duration": 2000
-    },
-    {
-      "type": "assert",
-      "assertionType": "message_received"
-    },
-    {
-      "type": "disconnect"
-    }
+    { "type": "connect", "url": "mock://echo" },
+    { "type": "send", "message": "Hello Echo!" },
+    { "type": "wait", "duration": 500 },
+    { "type": "assert", "assertionType": "message_contains", "expected": "Hello Echo!" },
+    { "type": "disconnect" }
   ]
 }
 ```
 
-### Exemplo 2: Teste STOMP Completo
+### Exemplo 2: STOMP Completo
 
 ```json
 {
   "name": "STOMP Chat Test",
   "description": "Testa chat com STOMP",
   "version": "1.0.0",
-
   "variables": {
     "SERVER": "wss://chat-server.com/ws",
     "TOKEN": "Bearer abc123xyz",
     "CHAT_ROOM": "/topic/room/general"
   },
-
-  "config": {
-    "stopOnError": true,
-    "logLevel": "verbose"
-  },
-
+  "config": { "stopOnError": true },
   "actions": [
-    {
-      "type": "log",
-      "message": "Iniciando teste de chat"
-    },
-    {
-      "type": "connect",
-      "url": "${SERVER}",
-      "connectionType": "stomp",
-      "token": "${TOKEN}"
-    },
-    {
-      "type": "wait",
-      "duration": 1000
-    },
-    {
-      "type": "assert",
-      "assertionType": "status_is",
-      "expected": "connected"
-    },
-    {
-      "type": "subscribe",
-      "destination": "${CHAT_ROOM}"
-    },
-    {
-      "type": "wait",
-      "duration": 500
-    },
-    {
-      "type": "send",
-      "message": "{\"user\":\"TestBot\",\"text\":\"Hello!\"}",
-      "destination": "/app/chat/send"
-    },
-    {
-      "type": "wait",
-      "duration": 2000
-    },
-    {
-      "type": "assert",
-      "assertionType": "message_received"
-    },
-    {
-      "type": "log",
-      "message": "Mensagem recebida com sucesso"
-    },
-    {
-      "type": "unsubscribe",
-      "destination": "${CHAT_ROOM}"
-    },
-    {
-      "type": "disconnect"
-    },
-    {
-      "type": "log",
-      "message": "Teste concluído com sucesso"
-    }
+    { "type": "connect", "url": "${SERVER}", "connectionType": "stomp", "token": "${TOKEN}" },
+    { "type": "subscribe", "destination": "${CHAT_ROOM}" },
+    { "type": "send", "destination": "/app/chat/send", "message": "{\"user\":\"TestBot\",\"text\":\"Hello!\"}" },
+    { "type": "wait", "duration": 2000 },
+    { "type": "assert", "assertionType": "message_contains", "expected": "Hello!" },
+    { "type": "unsubscribe", "destination": "${CHAT_ROOM}" },
+    { "type": "disconnect" }
   ]
 }
 ```
 
-### Exemplo 3: Teste de Mock Server
+### Exemplo 3: Chatbot Mock
 
 ```json
 {
-  "name": "Mock Server Test",
-  "description": "Testa funcionalidades do Mock Server",
+  "name": "Mock Chatbot Test",
+  "description": "Testa respostas do mock chatbot",
   "version": "1.0.0",
-
   "actions": [
-    {
-      "type": "connect",
-      "url": "mock://chatbot",
-      "connectionType": "websocket"
-    },
-    {
-      "type": "wait",
-      "duration": 500
-    },
-    {
-      "type": "send",
-      "message": "Olá"
-    },
-    {
-      "type": "wait",
-      "duration": 1000
-    },
-    {
-      "type": "assert",
-      "assertionType": "message_contains",
-      "expected": "bot"
-    },
-    {
-      "type": "send",
-      "message": "Que horas são?"
-    },
-    {
-      "type": "wait",
-      "duration": 1000
-    },
-    {
-      "type": "assert",
-      "assertionType": "message_count",
-      "expected": 2
-    },
-    {
-      "type": "disconnect"
-    }
+    { "type": "connect", "url": "mock://chatbot" },
+    { "type": "send", "message": "Que horas são?" },
+    { "type": "wait", "duration": 1000 },
+    { "type": "assert", "assertionType": "message_contains", "expected": "mockServer" },
+    { "type": "disconnect" }
   ]
 }
 ```
 
-### Exemplo 4: Teste com Múltiplas Validações
+### Exemplo 4: Contagem de Mensagens
 
 ```json
 {
-  "name": "Validation Test",
-  "description": "Testa múltiplas validações",
+  "name": "Message Count Test",
+  "description": "Valida quantidade de mensagens recebidas",
   "version": "1.0.0",
-
   "actions": [
-    {
-      "type": "connect",
-      "url": "mock://stream",
-      "connectionType": "websocket"
-    },
-    {
-      "type": "wait",
-      "duration": 3000
-    },
-    {
-      "type": "assert",
-      "assertionType": "message_received",
-      "description": "Deve ter recebido mensagens do stream"
-    },
-    {
-      "type": "assert",
-      "assertionType": "json_valid",
-      "description": "Mensagens devem ser JSON válido"
-    },
-    {
-      "type": "assert",
-      "assertionType": "message_contains",
-      "expected": "stream",
-      "description": "Mensagem deve conter 'stream'"
-    },
-    {
-      "type": "disconnect"
-    }
+    { "type": "connect", "url": "mock://echo" },
+    { "type": "send", "message": "msg-1" },
+    { "type": "send", "message": "msg-2" },
+    { "type": "wait", "duration": 500 },
+    { "type": "assert", "assertionType": "message_count", "expected": 2 },
+    { "type": "disconnect" }
   ]
 }
 ```
 
 ---
 
-## 🚀 Como Usar
+## Como Usar
 
-### No WebSocket Buddy
-
-1. Crie um arquivo JSON seguindo este formato
-2. Na aba "Test Automation", clique em "Importar Cenário"
-3. Selecione seu arquivo JSON
-4. Clique em "Executar Teste"
-5. Acompanhe a execução no console
-
-### Exportar Cenário
-
-1. Execute ações manualmente no WebSocket Buddy
-2. Clique em "Exportar como Cenário de Teste"
-3. Edite o JSON gerado conforme necessário
-4. Salve e reutilize
+1. Vá para a página "Test Automation".
+2. Use o Builder Visual ou o Editor JSON.
+3. Importe um JSON ou edite diretamente no editor.
+4. Conecte quando solicitado.
+5. Execute o teste e acompanhe os logs e o resultado.
+6. Após a execução, exporte o resultado em JSON ou HTML se necessário.
 
 ---
 
-## 💡 Dicas
-
-1. **Use variáveis** para URLs, tokens e valores que mudam entre ambientes
-2. **Adicione waits** após enviar mensagens para dar tempo do servidor responder
-3. **Use assertions** para validar que tudo funcionou como esperado
-4. **Adicione descriptions** para facilitar entender o que cada ação faz
-5. **Configure stopOnError: false** se quiser que o teste continue mesmo com falhas
-6. **Use logs** para marcar checkpoints importantes no teste
-
----
-
-## 📝 Schema JSON
-
-Para validação em editores, você pode usar este schema:
+## Schema JSON (Simplificado)
 
 ```json
 {
@@ -553,11 +365,39 @@ Para validação em editores, você pode usar este schema:
     "version": { "type": "string" },
     "author": { "type": "string" },
     "tags": { "type": "array", "items": { "type": "string" } },
+    "config": {
+      "type": "object",
+      "properties": {
+        "timeout": { "type": "number" },
+        "stopOnError": { "type": "boolean" },
+        "retryOnError": { "type": "number" },
+        "logLevel": { "type": "string" }
+      }
+    },
     "variables": { "type": "object" },
     "actions": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "object", "required": ["type"] }
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": { "type": "string" },
+          "description": { "type": "string" },
+          "url": { "type": "string" },
+          "connectionType": { "type": "string" },
+          "token": { "type": "string" },
+          "destination": { "type": "string" },
+          "message": { "type": "string" },
+          "headers": { "type": "object" },
+          "duration": { "type": "number" },
+          "assertionType": { "type": "string" },
+          "expected": {},
+          "timeout": { "type": "number" },
+          "continueOnError": { "type": "boolean" },
+          "skipIf": { "type": "string" }
+        }
+      }
     }
   }
 }
@@ -565,4 +405,4 @@ Para validação em editores, você pode usar este schema:
 
 ---
 
-**WebSocket Buddy** - Teste suas conexões WebSocket com facilidade!
+WebSocket Buddy - Teste suas conexões WebSocket com facilidade!
