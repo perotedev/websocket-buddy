@@ -3,7 +3,7 @@
  * Importa e executa cenários de teste automatizados
  * Usa a conexão ativa do contexto global (WebSocketContext)
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +17,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code, Wifi, WifiOff, Download } from 'lucide-react';
+import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code, Wifi, WifiOff, Download, Braces } from 'lucide-react';
 import { format } from 'date-fns';
+import { useTheme } from '@/hooks/useTheme';
+import CodeMirror from '@uiw/react-codemirror';
+import { json, jsonParseLinter } from '@codemirror/lang-json';
+import { linter } from '@codemirror/lint';
+import { tags as t } from '@lezer/highlight';
+import { createTheme } from '@uiw/codemirror-themes';
+import { EditorView } from '@codemirror/view';
 import { parseTestScenario, exportTestScenario } from '@/lib/testAutomation';
 import { TestScenario, TestScenarioResult } from '@/lib/testAutomation/types';
 import { TestRunner, TestRunnerCallbacks } from '@/lib/testAutomation/TestRunner';
@@ -36,6 +43,32 @@ const TestAutomation = () => {
   const [testLogs, setTestLogs] = useState<string[]>([]);
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
   const [pendingScenario, setPendingScenario] = useState<TestScenario | null>(null);
+  const [editorFormat, setEditorFormat] = useState<'raw' | 'json'>('json');
+
+  const { theme } = useTheme();
+  const [editorKey, setEditorKey] = useState(0);
+  useEffect(() => { setEditorKey(prev => prev + 1); }, [theme]);
+
+  const darkExtensions = useMemo(() => [
+    json(), linter(jsonParseLinter()),
+    EditorView.theme({ '&': { backgroundColor: '#000000' }, '.cm-gutters': { backgroundColor: '#1a1a1a', color: '#858585', border: 'none', borderRight: '1px solid #333333' }, '.cm-activeLineGutter': { backgroundColor: '#2a2a2a', color: '#ffffff', fontWeight: 'bold' } }, { dark: true }),
+  ], [theme]);
+
+  const lightExtensions = useMemo(() => [
+    json(), linter(jsonParseLinter()),
+    EditorView.theme({ '.cm-activeLineGutter': { backgroundColor: '#e0e0e0', color: '#000000', fontWeight: 'bold' } }),
+  ], [theme]);
+
+  const blackTheme = useMemo(() => createTheme({
+    theme: 'dark',
+    settings: { background: '#000000', foreground: '#e0e0e0', caret: '#00ff00', selection: '#264f78', selectionMatch: '#264f78', gutterBackground: '#1a1a1a', gutterForeground: '#858585', gutterBorder: '#333333', gutterActiveForeground: '#ffffff' },
+    styles: [
+      { tag: t.comment, color: '#6a9955' }, { tag: t.variableName, color: '#9cdcfe' },
+      { tag: [t.string, t.special(t.brace)], color: '#ce9178' }, { tag: t.number, color: '#b5cea8' },
+      { tag: t.bool, color: '#569cd6' }, { tag: t.null, color: '#569cd6' },
+      { tag: t.propertyName, color: '#9cdcfe' },
+    ],
+  }), [theme]);
 
   const testRunnerRef = useRef<TestRunner | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -412,7 +445,7 @@ const TestAutomation = () => {
                     <TabsContent value="json" className="space-y-3 mt-0">
                       <div className="space-y-3">
                   {/* Botões de Ação */}
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       size="sm"
@@ -429,16 +462,26 @@ const TestAutomation = () => {
                       <FileText className="h-4 w-4 mr-2" />
                       Carregar Exemplo
                     </Button>
-                    <a
-                      href="/TEST_SCENARIOS.md"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="outline" size="sm">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Documentação
+                    <div className="ml-auto flex items-center gap-1 border border-border rounded-md p-0.5">
+                      <Button
+                        onClick={() => setEditorFormat('raw')}
+                        variant={editorFormat === 'raw' ? 'default' : 'ghost'}
+                        size="sm"
+                        className="h-5 text-[10px] gap-1 px-2"
+                      >
+                        <FileText className="h-3 w-3" />
+                        <span>Raw</span>
                       </Button>
-                    </a>
+                      <Button
+                        onClick={() => setEditorFormat('json')}
+                        variant={editorFormat === 'json' ? 'default' : 'ghost'}
+                        size="sm"
+                        className="h-5 text-[10px] gap-1 px-2"
+                      >
+                        <Braces className="h-3 w-3" />
+                        <span>JSON</span>
+                      </Button>
+                    </div>
                   </div>
 
                   <input
@@ -449,16 +492,44 @@ const TestAutomation = () => {
                     onChange={handleFileUpload}
                   />
 
-                  {/* Editor de JSON */}
-                  <Textarea
-                    value={scenarioJson}
-                    onChange={(e) => {
-                      setScenarioJson(e.target.value);
-                      handleParseScenario(e.target.value);
-                    }}
-                    placeholder='{\n  "name": "Meu Teste",\n  "actions": [\n    ...\n  ]\n}'
-                    className="font-mono text-xs min-h-[400px]"
-                  />
+                  {/* Editor */}
+                  {editorFormat === 'raw' ? (
+                    <Textarea
+                      value={scenarioJson}
+                      onChange={(e) => {
+                        setScenarioJson(e.target.value);
+                        handleParseScenario(e.target.value);
+                      }}
+                      placeholder='{\n  "name": "Meu Teste",\n  "actions": [\n    ...\n  ]\n}'
+                      className="font-mono text-xs min-h-[400px]"
+                    />
+                  ) : (
+                    <div className="border border-border rounded-md overflow-hidden">
+                      <CodeMirror
+                        key={`scenario-cm-${editorKey}-${theme}`}
+                        value={scenarioJson}
+                        onChange={(value) => {
+                          setScenarioJson(value);
+                          handleParseScenario(value);
+                        }}
+                        extensions={theme === 'dark' ? darkExtensions : lightExtensions}
+                        theme={theme === 'dark' ? blackTheme : 'light'}
+                        placeholder='{"name": "Meu Teste", "actions": [...]}'
+                        height="400px"
+                        basicSetup={{
+                          lineNumbers: true,
+                          highlightActiveLineGutter: true,
+                          foldGutter: true,
+                          bracketMatching: true,
+                          closeBrackets: true,
+                          autocompletion: true,
+                          highlightActiveLine: false,
+                          syntaxHighlighting: true,
+                        }}
+                        style={{ fontSize: '12px' }}
+                      />
+                    </div>
+                  )}
 
                   {/* Erro de Parse */}
                   {parseError && (
