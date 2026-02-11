@@ -65,6 +65,10 @@ interface WebSocketContextValue {
   // Estado do builder de testes (persistido entre navegações)
   testBuilderState: TestBuilderState;
   setTestBuilderState: (state: Partial<TestBuilderState>) => void;
+
+  // Logs de execução de testes (persistidos entre navegações)
+  testExecutionLogs: string[];
+  setTestExecutionLogs: (logs: string[] | ((prev: string[]) => string[])) => void;
 }
 
 interface ActionPanelState {
@@ -127,6 +131,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const setTestBuilderState = useCallback((partial: Partial<TestBuilderState>) => {
     setTestBuilderStateRaw(prev => ({ ...prev, ...partial }));
   }, []);
+
+  const [testExecutionLogs, setTestExecutionLogs] = useState<string[]>([]);
 
   // Performance tracking
   const {
@@ -257,6 +263,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     setActionPanelState,
     testBuilderState,
     setTestBuilderState,
+    testExecutionLogs,
+    setTestExecutionLogs,
   };
 
   return (

@@ -146,7 +146,6 @@ const TestAutomation = () => {
   const [parseError, setParseError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [testResult, setTestResult] = useState<TestScenarioResult | null>(null);
-  const [testLogs, setTestLogs] = useState<string[]>([]);
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
   const [pendingScenario, setPendingScenario] = useState<TestScenario | null>(null);
   const [editorFormat, setEditorFormat] = useState<'raw' | 'json'>('json');
@@ -195,7 +194,15 @@ const TestAutomation = () => {
     sendMessage,
     testBuilderState,
     setTestBuilderState,
+    testExecutionLogs,
+    setTestExecutionLogs,
   } = useWebSocketContext();
+
+  // Ref para sempre ter acesso aos logs mais recentes
+  const logsRef = useRef(logs);
+  useEffect(() => {
+    logsRef.current = logs;
+  }, [logs]);
 
   // Sync: builder visual → JSON editor
   useEffect(() => {
@@ -220,10 +227,10 @@ const TestAutomation = () => {
 
   // Auto-scroll dos logs de teste (apenas durante execução)
   useEffect(() => {
-    if (isRunning && testLogs.length > 0) {
+    if (isRunning && testExecutionLogs.length > 0) {
       logsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-  }, [testLogs, isRunning]);
+  }, [testExecutionLogs, isRunning]);
 
   // Quando conectar após abrir o dialog, inicia o teste pendente
   useEffect(() => {
@@ -266,7 +273,7 @@ const TestAutomation = () => {
   const executeTest = async (scenario: TestScenario) => {
     setIsRunning(true);
     setTestResult(null);
-    setTestLogs([]);
+    setTestExecutionLogs([]); // Limpa logs apenas quando inicia novo teste
 
     // Cria callbacks para o TestRunner usando a conexão do contexto
     const callbacks: TestRunnerCallbacks = {
@@ -282,8 +289,12 @@ const TestAutomation = () => {
         await new Promise(resolve => setTimeout(resolve, 500));
       },
       subscribe: async (destination: string) => {
-        subscribe(destination);
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Verifica se já está inscrito no tópico antes de inscrever
+        const isAlreadySubscribed = subscribedTopics.some(t => t.destination === destination);
+        if (!isAlreadySubscribed) {
+          subscribe(destination);
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
       },
       unsubscribe: async (topicId: string) => {
         unsubscribe(topicId);
@@ -296,8 +307,10 @@ const TestAutomation = () => {
       getConnectionStatus: () => status,
       getSubscribedTopics: () => subscribedTopics,
       getReceivedMessages: (startTime?: Date) => {
-        // Filtra mensagens apenas do período do teste (após startTime)
-        const filteredLogs = logs.filter(l => l.type === 'MESSAGE');
+        // IMPORTANTE: Usa ref para buscar logs em tempo real (não usa closure)
+        // Isso garante que sempre pegamos as mensagens mais recentes
+        const currentLogs = logsRef.current;
+        const filteredLogs = currentLogs.filter(l => l.type === 'MESSAGE');
 
         if (!startTime) {
           return filteredLogs.map(l => l.data || l.message);
@@ -318,7 +331,7 @@ const TestAutomation = () => {
       onLog: (message: string, type?: string) => {
         const prefix = `[${type || 'INFO'}]`;
         const lines = message.split('\n').filter(l => l.trim() !== '');
-        setTestLogs(prev => [...prev, ...lines.map(l => `${prefix} ${l}`)]);
+        setTestExecutionLogs(prev => [...prev, ...lines.map(l => `${prefix} ${l}`)]);
       }
     };
 
@@ -420,7 +433,7 @@ const TestAutomation = () => {
         ...r,
         timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp,
       })),
-      logs: testLogs,
+      logs: testExecutionLogs,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -452,7 +465,7 @@ const TestAutomation = () => {
       </tr>`;
     }).join('');
 
-    const logsHTML = testLogs.map(log => {
+    const logsHTML = testExecutionLogs.map(log => {
       const color = log.includes('[ERROR]') ? '#dc2626' : log.includes('[INFO]') ? '#16a34a' : '#555';
       return `<div style="color:${color};">${log}</div>`;
     }).join('');
@@ -544,7 +557,7 @@ const TestAutomation = () => {
     </div>
 
     <div class="section">
-      <h2>Logs de Execução (${testLogs.length})</h2>
+      <h2>Logs de Execução (${testExecutionLogs.length})</h2>
       <div class="logs">${logsHTML || '<div style="color:#71717a;">Nenhum log registrado.</div>'}</div>
     </div>
 
@@ -816,7 +829,7 @@ const TestAutomation = () => {
                     <div>
                       <CardTitle className="text-base">Logs de Execução</CardTitle>
                       <CardDescription>
-                        {isRunning ? 'Executando...' : `${testLogs.length} logs`}
+                        {isRunning ? 'Executando...' : `${testExecutionLogs.length} logs`}
                       </CardDescription>
                     </div>
                     {isConnected ? (
@@ -834,12 +847,12 @@ const TestAutomation = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="bg-zinc-950 dark:bg-zinc-900 text-green-400 dark:text-green-300 font-mono text-xs p-3 rounded h-[400px] overflow-auto border dark:border-zinc-700">
-                    {testLogs.length === 0 ? (
+                    {testExecutionLogs.length === 0 ? (
                       <div className="text-zinc-500 dark:text-zinc-600">
                         Execute um teste para ver os logs aqui...
                       </div>
                     ) : (
-                      testLogs.map((log, index) => (
+                      testExecutionLogs.map((log, index) => (
                         <div
                           key={index}
                           className={`mb-1 ${
