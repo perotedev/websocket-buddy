@@ -19,7 +19,7 @@ export const MOCK_PRESETS: Record<string, MockPresetInfo> = {
   chatbot: {
     id: 'chatbot',
     name: 'Chat Bot',
-    description: 'Bot inteligente que responde perguntas',
+    description: 'Bot simples que responde perguntas',
     icon: '🤖',
     defaultConfig: {
       preset: 'chatbot',
