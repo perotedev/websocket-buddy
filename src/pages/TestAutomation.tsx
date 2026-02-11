@@ -296,7 +296,7 @@ const TestAutomation = () => {
       },
       getConnectionStatus: () => status,
       getSubscribedTopics: () => subscribedTopics,
-      getReceivedMessages: () => logs.map(l => l.data || l.message),
+      getReceivedMessages: () => logs.filter(l => l.type === 'MESSAGE').map(l => l.data || l.message),
       onLog: (message: string, type?: string) => {
         const prefix = `[${type || 'INFO'}]`;
         const lines = message.split('\n').filter(l => l.trim() !== '');
@@ -435,8 +435,8 @@ const TestAutomation = () => {
     }).join('');
 
     const logsHTML = testLogs.map(log => {
-      const color = log.includes('[ERROR]') ? '#ef4444' : log.includes('[INFO]') ? '#22c55e' : '#a1a1aa';
-      return `<div style="color:${color};margin-bottom:2px;">${log}</div>`;
+      const color = log.includes('[ERROR]') ? '#dc2626' : log.includes('[INFO]') ? '#16a34a' : '#555';
+      return `<div style="color:${color};">${log}</div>`;
     }).join('');
 
     const html = `<!DOCTYPE html>
@@ -467,7 +467,8 @@ const TestAutomation = () => {
     th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; }
     th { background: #f1f5f9; font-size: 11px; text-transform: uppercase; color: #666; }
     code { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-    .logs { background: #18181b; color: #4ade80; font-family: monospace; font-size: 12px; padding: 16px; border-radius: 6px; max-height: 400px; overflow-y: auto; }
+    .logs { background: #f8f9fa; color: #333; font-family: monospace; font-size: 12px; padding: 16px; border-radius: 6px; border: 1px solid #e2e8f0; }
+    .logs div { padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
     .footer { text-align: center; padding: 16px; font-size: 11px; color: #999; }
   </style>
 </head>

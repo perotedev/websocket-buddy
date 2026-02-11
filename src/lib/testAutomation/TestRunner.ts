@@ -103,6 +103,19 @@ export class TestRunner {
         overallStatus = 'failed';
         this.callbacks.onLog(`❌ Ação falhou: ${result.message}`, 'ERROR');
 
+        // Loga detalhes de esperado vs recebido
+        if (result.data) {
+          if (result.data.expected !== undefined) {
+            this.callbacks.onLog(`   ➤ Esperado: ${JSON.stringify(result.data.expected)}`, 'ERROR');
+          }
+          if (result.data.actual !== undefined) {
+            this.callbacks.onLog(`   ➤ Recebido: ${JSON.stringify(result.data.actual)}`, 'ERROR');
+          }
+          if (result.data.lastMessages !== undefined) {
+            this.callbacks.onLog(`   ➤ Mensagens do servidor: ${JSON.stringify(result.data.lastMessages)}`, 'ERROR');
+          }
+        }
+
         // Para se configurado para parar em erro
         if (scenario.config?.stopOnError && !action.continueOnError) {
           this.callbacks.onLog('⏹️ Parando execução devido a erro', 'ERROR');
@@ -374,7 +387,11 @@ export class TestRunner {
         return {
           passed: messages.length > 0,
           message: messages.length > 0 ? `${messages.length} mensagem(ns) recebida(s)` : 'Nenhuma mensagem recebida',
-          data: { messageCount: messages.length }
+          data: {
+            expected: 'ao menos 1 mensagem',
+            actual: `${messages.length} mensagem(ns)`,
+            ...(messages.length > 0 ? { lastMessages: messages.slice(-3) } : {})
+          }
         };
 
       case 'message_count':
@@ -386,12 +403,20 @@ export class TestRunner {
         };
 
       case 'message_contains':
-        const lastMsg = messages[messages.length - 1];
-        const contains = lastMsg?.includes(expected);
+        // Verifica se alguma mensagem contém o texto esperado
+        // Normaliza conteúdo para lidar com JSON escapado e formatação STOMP
+        const matchedMsg = messages.find(msg => this.messageContains(msg, expected));
+        const lastMsgForDisplay = messages[messages.length - 1];
         return {
-          passed: contains || false,
-          message: contains ? `Mensagem contém "${expected}"` : `Mensagem não contém "${expected}"`,
-          data: { expected, message: lastMsg }
+          passed: !!matchedMsg,
+          message: matchedMsg
+            ? `Mensagem contém "${expected}"`
+            : `Nenhuma mensagem contém "${expected}"`,
+          data: {
+            expected,
+            actual: matchedMsg || lastMsgForDisplay || '(nenhuma mensagem recebida)',
+            lastMessages: messages.slice(-3)
+          }
         };
 
       case 'json_valid':
@@ -401,13 +426,16 @@ export class TestRunner {
           return {
             passed: true,
             message: 'JSON válido',
-            data: { message: msg }
+            data: { actual: msg }
           };
         } catch {
           return {
             passed: false,
             message: 'JSON inválido',
-            data: { message: msg }
+            data: {
+              expected: 'JSON válido',
+              actual: msg || '(nenhuma mensagem recebida)'
+            }
           };
         }
 
@@ -417,6 +445,54 @@ export class TestRunner {
           message: `Tipo de assertion não implementado: ${type}`
         };
     }
+  }
+
+  /**
+   * Verifica se uma mensagem contém o texto esperado,
+   * normalizando JSON escapado e conteúdo formatado (ex: STOMP com Headers/Body)
+   */
+  private messageContains(message: string, expected: string): boolean {
+    if (!message) return false;
+
+    // 1. Verificação direta
+    if (message.includes(expected)) return true;
+
+    // 2. Tenta extrair o body de mensagens STOMP formatadas (Headers:\n...\n\nBody:\n...)
+    const bodyMatch = message.match(/Body:\n([\s\S]*)/);
+    if (bodyMatch) {
+      const body = bodyMatch[1].trim();
+      if (body.includes(expected)) return true;
+      // Tenta parsear o body como JSON
+      try {
+        const parsed = JSON.parse(body);
+        const flat = JSON.stringify(parsed);
+        if (flat.includes(expected)) return true;
+      } catch { /* ignora */ }
+    }
+
+    // 3. Tenta parsear a mensagem inteira como JSON (lida com double-encoding)
+    try {
+      const parsed = JSON.parse(message);
+      const normalized = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+      if (normalized.includes(expected)) return true;
+      // Se o parsed for string, tenta parsear de novo (triple-encoding)
+      if (typeof parsed === 'string') {
+        try {
+          const inner = JSON.parse(parsed);
+          if (JSON.stringify(inner).includes(expected)) return true;
+        } catch { /* ignora */ }
+      }
+    } catch { /* ignora */ }
+
+    // 4. Normaliza removendo escapes comuns e verifica
+    const unescaped = message
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+    if (unescaped.includes(expected)) return true;
+
+    return false;
   }
 
   /**
