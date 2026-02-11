@@ -28,6 +28,13 @@ export interface SessionExport {
   };
   logs: LogEntry[];
   stats?: SessionStats;
+  chartAverages?: {
+    averageMessagesPerSecond: number;
+    averageBytesPerSecond: number;
+    peakMessagesPerSecond: number;
+    peakBytesPerSecond: number;
+    totalSnapshots: number;
+  };
   metadata?: {
     appVersion: string;
     userAgent: string;

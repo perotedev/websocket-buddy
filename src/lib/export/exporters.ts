@@ -2,7 +2,7 @@
  * Funções de exportação em diferentes formatos
  */
 import { LogEntry } from '@/hooks/useWebSocket';
-import { SessionStats } from '@/lib/performance/types';
+import { SessionStats, MetricSnapshot } from '@/lib/performance/types';
 import { ConnectionProfile, SessionExport, LogsExport, ExportOptions } from './types';
 import { format } from 'date-fns';
 
@@ -195,8 +195,18 @@ export function exportSession(
   logs: LogEntry[],
   stats: SessionStats | null,
   connectionInfo: { url: string; type: string },
-  filename: string = `session-${Date.now()}.json`
+  filename: string = `session-${Date.now()}.json`,
+  snapshots?: MetricSnapshot[]
 ) {
+  // Calcula médias dos gráficos
+  const chartAverages = snapshots && snapshots.length > 0 ? {
+    averageMessagesPerSecond: parseFloat((snapshots.reduce((sum, s) => sum + s.messagesPerSecond, 0) / snapshots.length).toFixed(2)),
+    averageBytesPerSecond: parseFloat((snapshots.reduce((sum, s) => sum + s.bytesPerSecond, 0) / snapshots.length).toFixed(2)),
+    peakMessagesPerSecond: parseFloat(Math.max(...snapshots.map(s => s.messagesPerSecond)).toFixed(2)),
+    peakBytesPerSecond: parseFloat(Math.max(...snapshots.map(s => s.bytesPerSecond)).toFixed(2)),
+    totalSnapshots: snapshots.length,
+  } : undefined;
+
   const sessionData: SessionExport = {
     sessionId: crypto.randomUUID(),
     startTime: stats?.connectionStartTime?.toISOString() || new Date().toISOString(),
@@ -208,6 +218,7 @@ export function exportSession(
     },
     logs,
     stats: stats || undefined,
+    chartAverages,
     metadata: {
       appVersion: '1.0.0',
       userAgent: navigator.userAgent,
@@ -230,8 +241,57 @@ export function exportSessionReportHTML(
   logs: LogEntry[],
   stats: SessionStats | null,
   connectionInfo: { url: string; type: string },
-  filename: string = `report-${Date.now()}.html`
+  filename: string = `report-${Date.now()}.html`,
+  snapshots?: MetricSnapshot[]
 ) {
+  // Gera SVG do gráfico de throughput
+  const generateThroughputSVG = (data: MetricSnapshot[]): string => {
+    if (!data || data.length < 2) return '<p style="color:#999;text-align:center;padding:40px 0;">Dados insuficientes para gerar gráfico.</p>';
+    const width = 800, height = 250, padding = 50;
+    const values = data.map(d => d.messagesPerSecond);
+    const maxVal = Math.ceil(Math.max(...values) * 1.2) || 1;
+    const points = data.map((d, i) => {
+      const x = padding + (i / (data.length - 1)) * (width - padding * 2);
+      const y = height - padding - (d.messagesPerSecond / maxVal) * (height - padding * 2);
+      return `${x},${y}`;
+    });
+    const areaPoints = `${padding},${height - padding} ${points.join(' ')} ${padding + ((data.length - 1) / (data.length - 1)) * (width - padding * 2)},${height - padding}`;
+    const labels = data.filter((_, i) => i % Math.ceil(data.length / 6) === 0 || i === data.length - 1);
+    return `<svg viewBox="0 0 ${width} ${height}" style="width:100%;max-width:${width}px;font-family:sans-serif;">
+      <rect fill="#f8f9fa" width="${width}" height="${height}" rx="6"/>
+      <polygon points="${areaPoints}" fill="rgba(102,126,234,0.2)"/>
+      <polyline points="${points.join(' ')}" fill="none" stroke="#667eea" stroke-width="2"/>
+      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#ddd"/>
+      <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" stroke="#ddd"/>
+      <text x="${padding - 5}" y="${padding + 4}" text-anchor="end" font-size="10" fill="#999">${maxVal.toFixed(1)}</text>
+      <text x="${padding - 5}" y="${height - padding + 4}" text-anchor="end" font-size="10" fill="#999">0</text>
+      <text x="${padding}" y="${height - padding + 20}" font-size="10" fill="#999">${labels.length > 0 ? format(labels[0].timestamp, 'HH:mm:ss') : ''}</text>
+      <text x="${width - padding}" y="${height - padding + 20}" text-anchor="end" font-size="10" fill="#999">${labels.length > 0 ? format(labels[labels.length - 1].timestamp, 'HH:mm:ss') : ''}</text>
+      <text x="${width / 2}" y="${height - 5}" text-anchor="middle" font-size="11" fill="#666">Mensagens/s ao longo do tempo</text>
+    </svg>`;
+  };
+
+  // Gera SVG do gráfico de latência
+  const generateLatencySVG = (latencyHistory: typeof stats.latencyHistory): string => {
+    if (!latencyHistory || latencyHistory.length < 2) return '<p style="color:#999;text-align:center;padding:40px 0;">Dados insuficientes para gerar gráfico.</p>';
+    const width = 800, height = 250, padding = 50;
+    const values = latencyHistory.map(d => d.latency);
+    const maxVal = Math.ceil(Math.max(...values) * 1.2) || 1;
+    const points = latencyHistory.map((d, i) => {
+      const x = padding + (i / (latencyHistory.length - 1)) * (width - padding * 2);
+      const y = height - padding - (d.latency / maxVal) * (height - padding * 2);
+      return `${x},${y}`;
+    });
+    return `<svg viewBox="0 0 ${width} ${height}" style="width:100%;max-width:${width}px;font-family:sans-serif;">
+      <rect fill="#f8f9fa" width="${width}" height="${height}" rx="6"/>
+      <polyline points="${points.join(' ')}" fill="none" stroke="#764ba2" stroke-width="2"/>
+      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#ddd"/>
+      <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" stroke="#ddd"/>
+      <text x="${padding - 5}" y="${padding + 4}" text-anchor="end" font-size="10" fill="#999">${maxVal.toFixed(1)}ms</text>
+      <text x="${padding - 5}" y="${height - padding + 4}" text-anchor="end" font-size="10" fill="#999">0</text>
+      <text x="${width / 2}" y="${height - 5}" text-anchor="middle" font-size="11" fill="#666">Latência (ms) ao longo do tempo</text>
+    </svg>`;
+  };
   const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -419,6 +479,16 @@ export function exportSessionReportHTML(
           <div class="label">Messages/Second</div>
           <div class="value">${stats.messagesPerSecond.toFixed(2)}</div>
         </div>
+      </div>
+    </div>
+    ` : ''}
+
+    ${(snapshots && snapshots.length >= 2) || (stats?.latencyHistory && stats.latencyHistory.length >= 2) ? `
+    <div class="section">
+      <h2>Performance Charts</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:20px;">
+        ${snapshots && snapshots.length >= 2 ? generateThroughputSVG(snapshots) : ''}
+        ${stats?.latencyHistory && stats.latencyHistory.length >= 2 ? generateLatencySVG(stats.latencyHistory) : ''}
       </div>
     </div>
     ` : ''}

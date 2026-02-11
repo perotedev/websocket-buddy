@@ -61,6 +61,10 @@ interface WebSocketContextValue {
   // Estado do painel de ações (persistido entre navegações)
   actionPanelState: ActionPanelState;
   setActionPanelState: (state: Partial<ActionPanelState>) => void;
+
+  // Estado do builder de testes (persistido entre navegações)
+  testBuilderState: TestBuilderState;
+  setTestBuilderState: (state: Partial<TestBuilderState>) => void;
 }
 
 interface ActionPanelState {
@@ -69,6 +73,25 @@ interface ActionPanelState {
   headers: string;
   messageFormat: 'raw' | 'json';
   activeTab: string;
+}
+
+export interface TestBuilderActionItem {
+  id: string;
+  type: 'send' | 'subscribe' | 'unsubscribe' | 'wait' | 'wait-for-message';
+  params: Record<string, string | number | boolean>;
+}
+
+export interface TestBuilderAssertItem {
+  id: string;
+  type: 'message-received' | 'message-contains' | 'no-errors' | 'connection-closed' | 'latency';
+  params: Record<string, string | number | boolean>;
+}
+
+export interface TestBuilderState {
+  name: string;
+  description: string;
+  actions: TestBuilderActionItem[];
+  assertions: TestBuilderAssertItem[];
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
@@ -92,6 +115,17 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
   const setActionPanelState = useCallback((partial: Partial<ActionPanelState>) => {
     setActionPanelStateRaw(prev => ({ ...prev, ...partial }));
+  }, []);
+
+  const [testBuilderState, setTestBuilderStateRaw] = useState<TestBuilderState>({
+    name: '',
+    description: '',
+    actions: [],
+    assertions: [],
+  });
+
+  const setTestBuilderState = useCallback((partial: Partial<TestBuilderState>) => {
+    setTestBuilderStateRaw(prev => ({ ...prev, ...partial }));
   }, []);
 
   // Performance tracking
@@ -221,6 +255,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     sendMessage,
     actionPanelState,
     setActionPanelState,
+    testBuilderState,
+    setTestBuilderState,
   };
 
   return (

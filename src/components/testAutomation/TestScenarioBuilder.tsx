@@ -2,7 +2,7 @@
  * TestScenarioBuilder - Interface visual para criar cenários de teste
  * Gera JSON de teste automaticamente
  */
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Download, Play, Copy } from 'lucide-react';
+import { Plus, Trash2, Download, Play, Copy, FileText, Braces } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
+import CodeMirror from '@uiw/react-codemirror';
+import { json, jsonParseLinter } from '@codemirror/lang-json';
+import { linter } from '@codemirror/lint';
+import { tags as t } from '@lezer/highlight';
+import { createTheme } from '@uiw/codemirror-themes';
+import { EditorView } from '@codemirror/view';
 import type { TestScenario } from '@/lib/testAutomation/types';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import type { TestBuilderActionItem, TestBuilderAssertItem } from '@/contexts/WebSocketContext';
 
 interface TestScenarioBuilderProps {
   onRunTest: (scenario: TestScenario) => void;
@@ -20,25 +29,30 @@ interface TestScenarioBuilderProps {
 type ActionType = 'send' | 'subscribe' | 'unsubscribe' | 'wait' | 'wait-for-message';
 type AssertType = 'message-received' | 'message-contains' | 'no-errors' | 'connection-closed' | 'latency';
 
-interface ActionItem {
-  id: string;
-  type: ActionType;
-  params: Record<string, any>;
-}
+type ActionItem = TestBuilderActionItem;
+type AssertItem = TestBuilderAssertItem;
 
-interface AssertItem {
-  id: string;
-  type: AssertType;
-  params: Record<string, any>;
-}
+type MessageFormat = 'raw' | 'json';
 
 export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [actions, setActions] = useState<ActionItem[]>([]);
-  const [assertions, setAssertions] = useState<AssertItem[]>([]);
+  const { testBuilderState, setTestBuilderState } = useWebSocketContext();
+  const { name, description, actions, assertions } = testBuilderState;
+
+  const setName = (v: string) => setTestBuilderState({ name: v });
+  const setDescription = (v: string) => setTestBuilderState({ description: v });
+  const setActions = (v: ActionItem[]) => setTestBuilderState({ actions: v });
+  const setAssertions = (v: AssertItem[]) => setTestBuilderState({ assertions: v });
+
+  const [selectedAction, setSelectedAction] = useState<ActionType | ''>('');
+  const [selectedAssertion, setSelectedAssertion] = useState<AssertType | ''>('');
 
   // Adicionar ação
+  const handleAddAction = () => {
+    if (!selectedAction) return;
+    addAction(selectedAction);
+    setSelectedAction('');
+  };
+
   const addAction = (type: ActionType) => {
     const params = getDefaultActionParams(type);
 
@@ -48,6 +62,13 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
       params,
     };
     setActions([...actions, newAction]);
+  };
+
+  // Adicionar assertion via botão +
+  const handleAddAssertion = () => {
+    if (!selectedAssertion) return;
+    addAssertion(selectedAssertion);
+    setSelectedAssertion('');
   };
 
   // Adicionar assertion
@@ -82,16 +103,46 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
 
   // Gerar JSON do cenário
   const generateJSON = (): TestScenario => {
+    const testActions = actions.map(({ type, params }) => {
+      const action: any = { type };
+      if (type === 'send') {
+        if (params.message) action.message = params.message;
+        if (params.destination) action.destination = params.destination;
+      } else if (type === 'subscribe' || type === 'unsubscribe') {
+        if (params.destination) action.destination = params.destination;
+      } else if (type === 'wait') {
+        action.duration = params.ms || 1000;
+      } else if (type === 'wait-for-message') {
+        action.type = 'wait';
+        action.duration = params.timeout || 5000;
+      }
+      return action;
+    });
+
+    const testAssertions = assertions.map(({ type, params }) => {
+      const action: any = { type: 'assert' };
+      if (type === 'message-received') {
+        action.assertionType = 'message_received';
+      } else if (type === 'message-contains') {
+        action.assertionType = 'message_contains';
+        if (params.expected) action.expected = params.expected;
+      } else if (type === 'no-errors') {
+        action.assertionType = 'status_is';
+        action.expected = 'connected';
+      } else if (type === 'connection-closed') {
+        action.assertionType = 'status_is';
+        action.expected = 'disconnected';
+      } else if (type === 'latency') {
+        action.assertionType = 'message_received';
+        action.timeout = params.maxLatency || 1000;
+      }
+      return action;
+    });
+
     return {
       name: name || 'Cenário sem nome',
       description: description || '',
-      steps: [
-        {
-          name: 'Test Steps',
-          actions: actions.map(({ type, params }) => ({ type, ...params })),
-          assertions: assertions.map(({ type, params }) => ({ type, ...params })),
-        },
-      ],
+      actions: [...testActions, ...testAssertions],
     };
   };
 
@@ -155,18 +206,29 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold">Ações</Label>
-            <Select onValueChange={(value) => addAction(value as ActionType)}>
-              <SelectTrigger className="w-[180px] h-8 text-xs">
-                <SelectValue placeholder="Adicionar ação" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="send">Enviar Mensagem</SelectItem>
-                <SelectItem value="subscribe">Inscrever em Tópico</SelectItem>
-                <SelectItem value="unsubscribe">Desinscrever de Tópico</SelectItem>
-                <SelectItem value="wait">Aguardar</SelectItem>
-                <SelectItem value="wait-for-message">Aguardar Mensagem</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-1">
+              <Select value={selectedAction} onValueChange={(value) => setSelectedAction(value as ActionType)}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="Selecionar ação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="send">Enviar Mensagem</SelectItem>
+                  <SelectItem value="subscribe">Inscrever em Tópico</SelectItem>
+                  <SelectItem value="unsubscribe">Desinscrever de Tópico</SelectItem>
+                  <SelectItem value="wait">Aguardar</SelectItem>
+                  <SelectItem value="wait-for-message">Aguardar Mensagem</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddAction}
+                disabled={!selectedAction}
+                className="h-8 w-8 p-0"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -192,18 +254,29 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold">Validações</Label>
-            <Select onValueChange={(value) => addAssertion(value as AssertType)}>
-              <SelectTrigger className="w-[180px] h-8 text-xs">
-                <SelectValue placeholder="Adicionar validação" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="message-received">Mensagem Recebida</SelectItem>
-                <SelectItem value="message-contains">Mensagem Contém</SelectItem>
-                <SelectItem value="no-errors">Sem Erros</SelectItem>
-                <SelectItem value="connection-closed">Conexão Fechada</SelectItem>
-                <SelectItem value="latency">Latência Máxima</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-1">
+              <Select value={selectedAssertion} onValueChange={(value) => setSelectedAssertion(value as AssertType)}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="Selecionar validação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="message-received">Mensagem Recebida</SelectItem>
+                  <SelectItem value="message-contains">Mensagem Contém</SelectItem>
+                  <SelectItem value="no-errors">Sem Erros</SelectItem>
+                  <SelectItem value="connection-closed">Conexão Fechada</SelectItem>
+                  <SelectItem value="latency">Latência Máxima</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddAssertion}
+                disabled={!selectedAssertion}
+                className="h-8 w-8 p-0"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -273,6 +346,35 @@ function ActionEditor({
   onUpdate: (key: string, value: any) => void;
   onRemove: () => void;
 }) {
+  const { theme } = useTheme();
+  const [messageFormat, setMessageFormat] = useState<MessageFormat>(action.params.messageFormat || 'json');
+  const [editorKey, setEditorKey] = useState(0);
+
+  useEffect(() => {
+    setEditorKey(prev => prev + 1);
+  }, [theme]);
+
+  const darkExtensions = useMemo(() => [
+    json(), linter(jsonParseLinter()),
+    EditorView.theme({ '&': { backgroundColor: '#000000' }, '.cm-gutters': { backgroundColor: '#1a1a1a', color: '#858585', border: 'none', borderRight: '1px solid #333333' } }, { dark: true }),
+  ], [theme]);
+
+  const lightExtensions = useMemo(() => [
+    json(), linter(jsonParseLinter()),
+    EditorView.theme({ '.cm-activeLineGutter': { backgroundColor: '#e0e0e0', color: '#000000', fontWeight: 'bold' } }),
+  ], [theme]);
+
+  const blackTheme = useMemo(() => createTheme({
+    theme: 'dark',
+    settings: { background: '#000000', foreground: '#e0e0e0', caret: '#00ff00', selection: '#264f78', selectionMatch: '#264f78', gutterBackground: '#1a1a1a', gutterForeground: '#858585', gutterBorder: '#333333', gutterActiveForeground: '#ffffff' },
+    styles: [
+      { tag: t.comment, color: '#6a9955' }, { tag: t.variableName, color: '#9cdcfe' },
+      { tag: [t.string, t.special(t.brace)], color: '#ce9178' }, { tag: t.number, color: '#b5cea8' },
+      { tag: t.bool, color: '#569cd6' }, { tag: t.null, color: '#569cd6' },
+      { tag: t.propertyName, color: '#9cdcfe' },
+    ],
+  }), [theme]);
+
   const actionLabels: Record<ActionType, string> = {
     send: 'Enviar',
     subscribe: 'Inscrever',
@@ -302,12 +404,38 @@ function ActionEditor({
               placeholder="Destino STOMP (ex: /app/chat) - opcional para WebSocket puro"
               className="text-xs h-7"
             />
-            <Textarea
-              value={action.params.message || ''}
-              onChange={(e) => onUpdate('message', e.target.value)}
-              placeholder='{"type": "ping"}'
-              className="text-xs min-h-[60px]"
-            />
+            <div className="flex items-center justify-end">
+              <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
+                <Button onClick={() => setMessageFormat('raw')} variant={messageFormat === 'raw' ? 'default' : 'ghost'} size="sm" className="h-5 text-[10px] gap-1 px-2">
+                  <FileText className="h-3 w-3" /><span>Raw</span>
+                </Button>
+                <Button onClick={() => setMessageFormat('json')} variant={messageFormat === 'json' ? 'default' : 'ghost'} size="sm" className="h-5 text-[10px] gap-1 px-2">
+                  <Braces className="h-3 w-3" /><span>JSON</span>
+                </Button>
+              </div>
+            </div>
+            {messageFormat === 'raw' ? (
+              <Textarea
+                value={action.params.message || ''}
+                onChange={(e) => onUpdate('message', e.target.value)}
+                placeholder='{"type": "ping"}'
+                className="text-xs min-h-[60px]"
+              />
+            ) : (
+              <div className="border border-border rounded-md overflow-hidden">
+                <CodeMirror
+                  key={`action-cm-${editorKey}-${theme}`}
+                  value={action.params.message || ''}
+                  onChange={(value) => onUpdate('message', value)}
+                  extensions={theme === 'dark' ? darkExtensions : lightExtensions}
+                  theme={theme === 'dark' ? blackTheme : 'light'}
+                  placeholder='{"type": "ping"}'
+                  height="80px"
+                  basicSetup={{ lineNumbers: true, foldGutter: true, bracketMatching: true, closeBrackets: true, autocompletion: true, highlightActiveLine: false, syntaxHighlighting: true }}
+                  style={{ fontSize: '12px' }}
+                />
+              </div>
+            )}
           </>
         )}
 

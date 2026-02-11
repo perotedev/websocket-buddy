@@ -23,6 +23,12 @@ export function ThroughputChart({ data }: ThroughputChartProps) {
     ? data[data.length - 1].messagesPerSecond.toFixed(2)
     : '0';
 
+  // Calcula domínio Y com padding de 20% acima do valor máximo
+  const maxY = chartData.length > 0
+    ? Math.max(...chartData.map(d => d.messagesPerSecond))
+    : 1;
+  const yDomainMax = Math.ceil(maxY * 1.2) || 1;
+
   return (
     <Card>
       <CardHeader>
@@ -54,6 +60,7 @@ export function ThroughputChart({ data }: ThroughputChartProps) {
               <YAxis
                 tick={{ fontSize: 12 }}
                 className="text-muted-foreground"
+                domain={[0, yDomainMax]}
                 label={{
                   value: 'Mensagens/s',
                   angle: -90,

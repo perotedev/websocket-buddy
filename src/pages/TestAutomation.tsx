@@ -17,7 +17,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code, Wifi, WifiOff } from 'lucide-react';
+import { Upload, Play, Square, FileText, AlertCircle, CheckCircle2, XCircle, Wrench, Code, Wifi, WifiOff, Download } from 'lucide-react';
+import { format } from 'date-fns';
 import { parseTestScenario, exportTestScenario } from '@/lib/testAutomation';
 import { TestScenario, TestScenarioResult } from '@/lib/testAutomation/types';
 import { TestRunner, TestRunnerCallbacks } from '@/lib/testAutomation/TestRunner';
@@ -226,6 +227,155 @@ const TestAutomation = () => {
 
   const isConnected = status === 'connected';
 
+  // Exportar resultado do teste em JSON
+  const exportTestResultJSON = () => {
+    if (!testResult) return;
+    const data = {
+      ...testResult,
+      startTime: testResult.startTime instanceof Date ? testResult.startTime.toISOString() : testResult.startTime,
+      endTime: testResult.endTime instanceof Date ? testResult.endTime.toISOString() : testResult.endTime,
+      actionResults: testResult.actionResults.map(r => ({
+        ...r,
+        timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : r.timestamp,
+      })),
+      logs: testLogs,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `test-result-${testResult.scenario.name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Exportar resultado do teste em HTML
+  const exportTestResultHTML = () => {
+    if (!testResult) return;
+    const startTime = testResult.startTime instanceof Date ? testResult.startTime : new Date(testResult.startTime);
+    const statusColor = testResult.status === 'passed' ? '#22c55e' : '#ef4444';
+    const statusLabel = testResult.status === 'passed' ? 'PASSED' : 'FAILED';
+
+    const actionsHTML = testResult.actionResults.map((r, i) => {
+      const ts = r.timestamp instanceof Date ? r.timestamp : new Date(r.timestamp);
+      const stColor = r.status === 'passed' ? '#22c55e' : r.status === 'failed' ? '#ef4444' : '#eab308';
+      return `<tr>
+        <td>${i + 1}</td>
+        <td><code>${r.action.type}</code>${r.action.description ? ` - ${r.action.description}` : ''}</td>
+        <td><span style="color:${stColor};font-weight:600;">${r.status.toUpperCase()}</span></td>
+        <td>${r.message}</td>
+        <td>${r.duration}ms</td>
+        <td style="font-size:11px;color:#999;">${format(ts, 'HH:mm:ss.SSS')}</td>
+      </tr>`;
+    }).join('');
+
+    const logsHTML = testLogs.map(log => {
+      const color = log.includes('[ERROR]') ? '#ef4444' : log.includes('[INFO]') ? '#22c55e' : '#a1a1aa';
+      return `<div style="color:${color};margin-bottom:2px;">${log}</div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Result - ${testResult.scenario.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #333; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 24px; border-radius: 8px; margin-bottom: 20px; }
+    .header h1 { font-size: 20px; margin-bottom: 6px; }
+    .header p { opacity: 0.9; font-size: 13px; }
+    .status-badge { display: inline-block; background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; margin-top: 8px; }
+    .section { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .section h2 { font-size: 15px; margin-bottom: 12px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat { text-align: center; }
+    .stat .label { font-size: 11px; color: #999; text-transform: uppercase; }
+    .stat .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+    .stat .value.green { color: #22c55e; }
+    .stat .value.red { color: #ef4444; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f1f5f9; font-size: 11px; text-transform: uppercase; color: #666; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+    .logs { background: #18181b; color: #4ade80; font-family: monospace; font-size: 12px; padding: 16px; border-radius: 6px; max-height: 400px; overflow-y: auto; }
+    .footer { text-align: center; padding: 16px; font-size: 11px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>${testResult.scenario.name}</h1>
+      ${testResult.scenario.description ? `<p>${testResult.scenario.description}</p>` : ''}
+      <div class="status-badge">${statusLabel}</div>
+    </div>
+
+    <div class="section">
+      <h2>Resumo</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Total de Ações</div>
+          <div class="value">${testResult.totalActions}</div>
+        </div>
+        <div class="stat">
+          <div class="label">Duração</div>
+          <div class="value">${testResult.duration}ms</div>
+        </div>
+        <div class="stat">
+          <div class="label">Passou</div>
+          <div class="value green">${testResult.passedActions}</div>
+        </div>
+        <div class="stat">
+          <div class="label">Falhou</div>
+          <div class="value red">${testResult.failedActions}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Detalhes das Ações (${testResult.actionResults.length})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ação</th>
+            <th>Status</th>
+            <th>Mensagem</th>
+            <th>Duração</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${actionsHTML}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Logs de Execução (${testLogs.length})</h2>
+      <div class="logs">${logsHTML || '<div style="color:#71717a;">Nenhum log registrado.</div>'}</div>
+    </div>
+
+    <div class="footer">
+      <p>WebSocket Buddy - Test Report</p>
+      <p>Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | Iniciado em ${format(startTime, 'dd/MM/yyyy HH:mm:ss')}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `test-report-${testResult.scenario.name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.html`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="h-full overflow-auto">
       <div className="container mx-auto px-2 sm:px-3 py-3 sm:py-4">
@@ -330,7 +480,7 @@ const TestAutomation = () => {
                           <> - {currentScenario.description}</>
                         )}
                         <br />
-                        {currentScenario.actions.length} ações definidas
+                        {(currentScenario.actions?.length || 0)} ações definidas
                       </AlertDescription>
                     </Alert>
                   )}
@@ -416,6 +566,27 @@ const TestAutomation = () => {
                         {testResult.summary}
                       </pre>
                     )}
+
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportTestResultHTML}
+                        className="flex-1 text-xs"
+                      >
+                        <Download className="h-3 w-3 mr-1.5" />
+                        Exportar HTML
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportTestResultJSON}
+                        className="flex-1 text-xs"
+                      >
+                        <Download className="h-3 w-3 mr-1.5" />
+                        Exportar JSON
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}

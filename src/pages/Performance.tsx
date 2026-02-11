@@ -2,6 +2,7 @@
  * Página de Performance & Stats
  * Monitoramento em tempo real de métricas de conexão
  */
+import { useState } from 'react';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,8 @@ import {
   MessageSquare,
   RotateCcw,
   Zap,
-  TrendingUp
+  TrendingUp,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -49,6 +51,8 @@ const Performance = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
+
+  const [errorsDismissed, setErrorsDismissed] = useState(false);
 
   const isConnected = connectionInfo?.connectedAt && !connectionInfo?.disconnectedAt;
   const status = isConnected ? 'connected' : 'disconnected';
@@ -204,10 +208,18 @@ const Performance = () => {
           </div>
 
           {/* Errors */}
-          {stats.errorCount > 0 && (
+          {stats.errorCount > 0 && !errorsDismissed && (
             <Card className="border-destructive">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm text-destructive">Erros Detectados</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setErrorsDismissed(true)}
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </CardHeader>
               <CardContent>
                 <p className="text-sm">

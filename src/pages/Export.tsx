@@ -33,7 +33,7 @@ import {
 } from '@/lib/export';
 
 const Export = () => {
-  const { logs, stats, connectionInfo } = useWebSocketContext();
+  const { logs, stats, snapshots, connectionInfo } = useWebSocketContext();
 
   const [connectionName, setConnectionName] = useState('');
   const [connectionDescription, setConnectionDescription] = useState('');
@@ -73,7 +73,7 @@ const Export = () => {
     exportSession(convertedLogs, stats, {
       url: connectionInfo?.url || 'N/A',
       type: connectionInfo?.connectionType || 'unknown'
-    });
+    }, undefined, snapshots);
     showSuccessMessage('Sessão exportada com sucesso!');
   };
 
@@ -82,7 +82,7 @@ const Export = () => {
     exportSessionReportHTML(convertedLogs, stats, {
       url: connectionInfo?.url || 'N/A',
       type: connectionInfo?.connectionType || 'unknown'
-    });
+    }, undefined, snapshots);
     showSuccessMessage('Relatório HTML gerado com sucesso!');
   };
 
