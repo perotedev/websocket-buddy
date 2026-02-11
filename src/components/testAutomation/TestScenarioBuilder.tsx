@@ -197,6 +197,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
               onChange={(e) => setName(e.target.value)}
               placeholder="Meu Teste"
               className="text-xs h-8"
+              disabled={isRunning}
             />
           </div>
 
@@ -207,6 +208,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
               checked={manualValidation}
               onChange={(e) => setManualValidation(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
+              disabled={isRunning}
             />
             <Label htmlFor="manual-validation" className="text-xs cursor-pointer">
               Validação Manual (pausar antes das validações)
@@ -219,7 +221,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
           <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold">Ações</Label>
             <div className="flex items-center gap-1">
-              <Select value={selectedAction} onValueChange={(value) => setSelectedAction(value as ActionType)}>
+              <Select value={selectedAction} onValueChange={(value) => setSelectedAction(value as ActionType)} disabled={isRunning}>
                 <SelectTrigger className="w-[180px] h-8 text-xs">
                   <SelectValue placeholder="Selecionar ação" />
                 </SelectTrigger>
@@ -235,7 +237,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
                 variant="outline"
                 size="sm"
                 onClick={handleAddAction}
-                disabled={!selectedAction}
+                disabled={!selectedAction || isRunning}
                 className="h-8 w-8 p-0"
               >
                 <Plus className="h-4 w-4" />
@@ -257,6 +259,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
                 index={index}
                 onUpdate={(key, value) => updateActionParam(action.id, key, value)}
                 onRemove={() => removeAction(action.id)}
+                disabled={isRunning}
               />
             ))}
           </div>
@@ -267,7 +270,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
           <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold">Validações</Label>
             <div className="flex items-center gap-1">
-              <Select value={selectedAssertion} onValueChange={(value) => setSelectedAssertion(value as AssertType)}>
+              <Select value={selectedAssertion} onValueChange={(value) => setSelectedAssertion(value as AssertType)} disabled={isRunning}>
                 <SelectTrigger className="w-[180px] h-8 text-xs">
                   <SelectValue placeholder="Selecionar validação" />
                 </SelectTrigger>
@@ -283,7 +286,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
                 variant="outline"
                 size="sm"
                 onClick={handleAddAssertion}
-                disabled={!selectedAssertion}
+                disabled={!selectedAssertion || isRunning}
                 className="h-8 w-8 p-0"
               >
                 <Plus className="h-4 w-4" />
@@ -305,6 +308,7 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
                 index={index}
                 onUpdate={(key, value) => updateAssertParam(assertion.id, key, value)}
                 onRemove={() => removeAssertion(assertion.id)}
+                disabled={isRunning}
               />
             ))}
           </div>
@@ -314,9 +318,8 @@ export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused
         <div className="space-y-2 pt-2">
           {isTestPaused && (
             <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-500">
-              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               <AlertDescription className="text-xs text-yellow-700 dark:text-yellow-300">
-                ⏸️ Teste pausado - Aguardando validação manual
+                Aguardando validação manual
               </AlertDescription>
             </Alert>
           )}
@@ -398,11 +401,13 @@ function ActionEditor({
   index,
   onUpdate,
   onRemove,
+  disabled = false,
 }: {
   action: ActionItem;
   index: number;
   onUpdate: (key: string, value: any) => void;
   onRemove: () => void;
+  disabled?: boolean;
 }) {
   const { theme } = useTheme();
   const [messageFormat, setMessageFormat] = useState<MessageFormat>(action.params.messageFormat || 'json');
@@ -448,7 +453,7 @@ function ActionEditor({
           <Badge variant="secondary" className="text-[10px]">#{index + 1}</Badge>
           <span className="text-xs font-semibold">{actionLabels[action.type]}</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={onRemove} className="h-6 w-6 p-0">
+        <Button variant="ghost" size="sm" onClick={onRemove} className="h-6 w-6 p-0" disabled={disabled}>
           <Trash2 className="h-3 w-3" />
         </Button>
       </div>
@@ -462,12 +467,13 @@ function ActionEditor({
                 onChange={(e) => onUpdate('destination', e.target.value)}
                 placeholder="/app/chat (opcional para WebSocket puro)"
                 className="text-xs h-7 flex-1"
+                disabled={disabled}
               />
               <div className="flex items-center gap-1 border border-border rounded-md p-0.5 flex-shrink-0">
-                <Button onClick={() => setMessageFormat('raw')} variant={messageFormat === 'raw' ? 'default' : 'ghost'} size="sm" className="h-5 text-[10px] gap-1 px-2">
+                <Button onClick={() => setMessageFormat('raw')} variant={messageFormat === 'raw' ? 'default' : 'ghost'} size="sm" className="h-5 text-[10px] gap-1 px-2" disabled={disabled}>
                   <FileText className="h-3 w-3" /><span>Raw</span>
                 </Button>
-                <Button onClick={() => setMessageFormat('json')} variant={messageFormat === 'json' ? 'default' : 'ghost'} size="sm" className="h-5 text-[10px] gap-1 px-2">
+                <Button onClick={() => setMessageFormat('json')} variant={messageFormat === 'json' ? 'default' : 'ghost'} size="sm" className="h-5 text-[10px] gap-1 px-2" disabled={disabled}>
                   <Braces className="h-3 w-3" /><span>JSON</span>
                 </Button>
               </div>
@@ -478,6 +484,7 @@ function ActionEditor({
                 onChange={(e) => onUpdate('message', e.target.value)}
                 placeholder='{"type": "ping"}'
                 className="text-xs min-h-[60px]"
+                disabled={disabled}
               />
             ) : (
               <div className="border border-border rounded-md overflow-hidden">
@@ -491,6 +498,7 @@ function ActionEditor({
                   height="80px"
                   basicSetup={{ lineNumbers: true, foldGutter: true, bracketMatching: true, closeBrackets: true, autocompletion: true, highlightActiveLine: false, syntaxHighlighting: true }}
                   style={{ fontSize: '12px' }}
+                  editable={!disabled}
                 />
               </div>
             )}
@@ -503,6 +511,7 @@ function ActionEditor({
             onChange={(e) => onUpdate('destination', e.target.value)}
             placeholder="/topic/messages"
             className="text-xs h-7"
+            disabled={disabled}
           />
         )}
 
@@ -512,6 +521,7 @@ function ActionEditor({
             onChange={(e) => onUpdate('destination', e.target.value)}
             placeholder="/topic/messages"
             className="text-xs h-7"
+            disabled={disabled}
           />
         )}
 
@@ -522,6 +532,7 @@ function ActionEditor({
               value={action.params.ms || 1000}
               onChange={(e) => onUpdate('ms', parseInt(e.target.value))}
               className="text-xs h-7"
+              disabled={disabled}
             />
             <span className="text-xs text-muted-foreground">ms</span>
           </div>
@@ -535,6 +546,7 @@ function ActionEditor({
               onChange={(e) => onUpdate('timeout', parseInt(e.target.value))}
               placeholder="Timeout (ms)"
               className="text-xs h-7"
+              disabled={disabled}
             />
             <span className="text-xs text-muted-foreground">ms</span>
           </div>
@@ -550,11 +562,13 @@ function AssertionEditor({
   index,
   onUpdate,
   onRemove,
+  disabled = false,
 }: {
   assertion: AssertItem;
   index: number;
   onUpdate: (key: string, value: any) => void;
   onRemove: () => void;
+  disabled?: boolean;
 }) {
   const assertLabels: Record<AssertType, string> = {
     'message-received': 'Mensagem Recebida',
@@ -571,7 +585,7 @@ function AssertionEditor({
           <Badge variant="default" className="text-[10px]">✓ {index + 1}</Badge>
           <span className="text-xs font-semibold">{assertLabels[assertion.type]}</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={onRemove} className="h-6 w-6 p-0">
+        <Button variant="ghost" size="sm" onClick={onRemove} className="h-6 w-6 p-0" disabled={disabled}>
           <Trash2 className="h-3 w-3" />
         </Button>
       </div>
@@ -583,6 +597,7 @@ function AssertionEditor({
             onChange={(e) => onUpdate('expected', e.target.value)}
             placeholder='Texto esperado na mensagem'
             className="text-xs h-7"
+            disabled={disabled}
           />
         )}
 
@@ -593,6 +608,7 @@ function AssertionEditor({
               value={assertion.params.maxLatency || 1000}
               onChange={(e) => onUpdate('maxLatency', parseInt(e.target.value))}
               className="text-xs h-7"
+              disabled={disabled}
             />
             <span className="text-xs text-muted-foreground">ms max</span>
           </div>

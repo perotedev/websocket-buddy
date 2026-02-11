@@ -747,9 +747,8 @@ const TestAutomation = () => {
                   <div className="space-y-2">
                     {isTestPaused && (
                       <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-500">
-                        <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                         <AlertDescription className="text-xs text-yellow-700 dark:text-yellow-300">
-                          ⏸️ Teste pausado - Aguardando validação manual
+                          Aguardando validação manual
                         </AlertDescription>
                       </Alert>
                     )}
