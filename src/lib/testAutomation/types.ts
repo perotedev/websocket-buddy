@@ -77,6 +77,7 @@ export interface TestScenario {
     stopOnError?: boolean;         // Parar ao encontrar erro
     retryOnError?: number;         // Quantas vezes tentar novamente
     logLevel?: 'verbose' | 'normal' | 'quiet';
+    manualValidation?: boolean;    // Pausar antes das validações e aguardar confirmação manual
   };
 
   // Variáveis que podem ser usadas nas ações

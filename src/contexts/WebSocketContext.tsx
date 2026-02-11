@@ -96,6 +96,7 @@ export interface TestBuilderState {
   description: string;
   actions: TestBuilderActionItem[];
   assertions: TestBuilderAssertItem[];
+  manualValidation: boolean;
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
@@ -126,6 +127,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     description: '',
     actions: [],
     assertions: [],
+    manualValidation: false,
   });
 
   const setTestBuilderState = useCallback((partial: Partial<TestBuilderState>) => {

@@ -32,6 +32,8 @@ export class TestRunner {
   private isRunning: boolean = false;
   private shouldStop: boolean = false;
   private testStartTime: Date | null = null;
+  private isPaused: boolean = false;
+  private resumeCallback: (() => void) | null = null;
 
   constructor(callbacks: TestRunnerCallbacks) {
     this.callbacks = callbacks;
@@ -76,6 +78,7 @@ export class TestRunner {
     this.callbacks.onLog(`🚀 Iniciando cenário: ${scenario.name}`, 'INFO');
 
     let overallStatus: TestStatus = 'passed';
+    let hasPassedActionsPhase = false;
 
     // Executa cada ação
     for (let i = 0; i < scenario.actions.length; i++) {
@@ -87,6 +90,25 @@ export class TestRunner {
 
       const action = scenario.actions[i];
       const actionNumber = i + 1;
+
+      // Pausa antes das validações se modo manual estiver ativado
+      if (scenario.config?.manualValidation && action.type === 'assert' && !hasPassedActionsPhase) {
+        hasPassedActionsPhase = true;
+        this.callbacks.onLog('\n⏸️ Ações concluídas. Aguardando validação manual...', 'INFO');
+        this.callbacks.onLog('💡 Clique em "Finalizar Teste" para executar as validações', 'INFO');
+        this.isPaused = true;
+
+        // Aguarda o resume() ser chamado
+        await new Promise<void>((resolve) => {
+          this.resumeCallback = resolve;
+        });
+
+        if (this.shouldStop) {
+          this.callbacks.onLog('⏹️ Execução interrompida pelo usuário', 'INFO');
+          overallStatus = 'skipped';
+          break;
+        }
+      }
 
       this.callbacks.onLog(
         `\n📋 Ação ${actionNumber}/${scenario.actions.length}: ${action.type}`,
@@ -162,6 +184,29 @@ export class TestRunner {
    */
   stop(): void {
     this.shouldStop = true;
+    if (this.resumeCallback) {
+      this.resumeCallback();
+      this.resumeCallback = null;
+    }
+  }
+
+  /**
+   * Retoma a execução do teste (usado em modo de validação manual)
+   */
+  resume(): void {
+    if (this.isPaused && this.resumeCallback) {
+      this.callbacks.onLog('▶️ Continuando com validações...', 'INFO');
+      this.isPaused = false;
+      this.resumeCallback();
+      this.resumeCallback = null;
+    }
+  }
+
+  /**
+   * Verifica se o teste está pausado aguardando validação manual
+   */
+  isPausedForValidation(): boolean {
+    return this.isPaused;
   }
 
   /**

@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Download, Play, Copy, FileText, Braces } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Trash2, Download, Play, Copy, FileText, Braces, CheckCircle2, Square, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import CodeMirror from '@uiw/react-codemirror';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
@@ -24,6 +25,10 @@ import type { TestBuilderActionItem, TestBuilderAssertItem } from '@/contexts/We
 
 interface TestScenarioBuilderProps {
   onRunTest: (scenario: TestScenario) => void;
+  isRunning?: boolean;
+  isTestPaused?: boolean;
+  onFinishTest?: () => void;
+  onStopTest?: () => void;
 }
 
 type ActionType = 'send' | 'subscribe' | 'unsubscribe' | 'wait' | 'wait-for-message';
@@ -34,14 +39,15 @@ type AssertItem = TestBuilderAssertItem;
 
 type MessageFormat = 'raw' | 'json';
 
-export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
+export function TestScenarioBuilder({ onRunTest, isRunning = false, isTestPaused = false, onFinishTest, onStopTest }: TestScenarioBuilderProps) {
   const { testBuilderState, setTestBuilderState } = useWebSocketContext();
-  const { name, description, actions, assertions } = testBuilderState;
+  const { name, description, actions, assertions, manualValidation } = testBuilderState;
 
   const setName = (v: string) => setTestBuilderState({ name: v });
   const setDescription = (v: string) => setTestBuilderState({ description: v });
   const setActions = (v: ActionItem[]) => setTestBuilderState({ actions: v });
   const setAssertions = (v: AssertItem[]) => setTestBuilderState({ assertions: v });
+  const setManualValidation = (v: boolean) => setTestBuilderState({ manualValidation: v });
 
   const [selectedAction, setSelectedAction] = useState<ActionType | ''>('');
   const [selectedAssertion, setSelectedAssertion] = useState<AssertType | ''>('');
@@ -142,6 +148,11 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
     return {
       name: name || 'Teste WebSocket',
       actions: [...testActions, ...testAssertions],
+      ...(manualValidation && {
+        config: {
+          manualValidation: true,
+        },
+      }),
     };
   };
 
@@ -187,6 +198,19 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
               placeholder="Meu Teste"
               className="text-xs h-8"
             />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="manual-validation"
+              checked={manualValidation}
+              onChange={(e) => setManualValidation(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <Label htmlFor="manual-validation" className="text-xs cursor-pointer">
+              Validação Manual (pausar antes das validações)
+            </Label>
           </div>
         </div>
 
@@ -287,35 +311,81 @@ export function TestScenarioBuilder({ onRunTest }: TestScenarioBuilderProps) {
         </div>
 
         {/* Ações */}
-        <div className="flex gap-2 pt-2">
-          <Button
-            onClick={runTest}
-            disabled={actions.length === 0}
-            size="sm"
-            className="flex-1"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Executar Teste
-          </Button>
+        <div className="space-y-2 pt-2">
+          {isTestPaused && (
+            <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-500">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <AlertDescription className="text-xs text-yellow-700 dark:text-yellow-300">
+                ⏸️ Teste pausado - Aguardando validação manual
+              </AlertDescription>
+            </Alert>
+          )}
+          <div className="flex gap-2">
+            <Button
+              onClick={runTest}
+              disabled={actions.length === 0 || isRunning}
+              size="sm"
+              className="flex-1"
+            >
+              {isRunning ? (
+                <>
+                  <Square className="h-4 w-4 mr-2 animate-pulse" />
+                  Executando...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Executar Teste
+                </>
+              )}
+            </Button>
 
-          <Button
-            onClick={exportJSON}
-            disabled={actions.length === 0}
-            size="sm"
-            variant="outline"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Exportar JSON
-          </Button>
+            {isRunning && isTestPaused && onFinishTest && (
+              <Button
+                onClick={onFinishTest}
+                variant="default"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Finalizar Teste
+              </Button>
+            )}
 
-          <Button
-            onClick={copyJSON}
-            disabled={actions.length === 0}
-            size="sm"
-            variant="outline"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
+            {isRunning && !isTestPaused && onStopTest && (
+              <Button
+                onClick={onStopTest}
+                variant="destructive"
+                size="sm"
+              >
+                <Square className="h-4 w-4 mr-2" />
+                Parar
+              </Button>
+            )}
+
+            {!isRunning && (
+              <>
+                <Button
+                  onClick={exportJSON}
+                  disabled={actions.length === 0}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar JSON
+                </Button>
+
+                <Button
+                  onClick={copyJSON}
+                  disabled={actions.length === 0}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

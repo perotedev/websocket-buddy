@@ -75,6 +75,11 @@ function builderStateToJson(state: TestBuilderState): string {
   return JSON.stringify({
     name: state.name || 'Teste WebSocket',
     actions: [...testActions, ...testAssertions],
+    ...(state.manualValidation && {
+      config: {
+        manualValidation: true,
+      },
+    }),
   }, null, 2);
 }
 
@@ -134,6 +139,7 @@ function jsonToBuilderState(jsonStr: string): TestBuilderState | null {
       description: scenario.description || '',
       actions,
       assertions,
+      manualValidation: scenario.config?.manualValidation || false,
     };
   } catch {
     return null;
@@ -149,6 +155,7 @@ const TestAutomation = () => {
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
   const [pendingScenario, setPendingScenario] = useState<TestScenario | null>(null);
   const [editorFormat, setEditorFormat] = useState<'raw' | 'json'>('json');
+  const [isTestPaused, setIsTestPaused] = useState(false);
 
   const { theme } = useTheme();
   const [editorKey, setEditorKey] = useState(0);
@@ -332,6 +339,15 @@ const TestAutomation = () => {
         const prefix = `[${type || 'INFO'}]`;
         const lines = message.split('\n').filter(l => l.trim() !== '');
         setTestExecutionLogs(prev => [...prev, ...lines.map(l => `${prefix} ${l}`)]);
+
+        // Detecta quando o teste pausou para validação manual
+        if (message.includes('Aguardando validação manual')) {
+          console.log('🔴 TESTE PAUSADO - Definindo isTestPaused = true');
+          setIsTestPaused(true);
+        } else if (message.includes('Continuando com validações')) {
+          console.log('🟢 TESTE RETOMADO - Definindo isTestPaused = false');
+          setIsTestPaused(false);
+        }
       }
     };
 
@@ -343,9 +359,10 @@ const TestAutomation = () => {
       const result = await runner.runScenario(scenario);
       setTestResult(result);
     } catch (error) {
-      setTestLogs(prev => [...prev, `[ERROR] ${error}`]);
+      setTestExecutionLogs(prev => [...prev, `[ERROR] ${error}`]);
     } finally {
       setIsRunning(false);
+      setIsTestPaused(false);
       testRunnerRef.current = null;
     }
   };
@@ -368,6 +385,13 @@ const TestAutomation = () => {
   const handleStopTest = () => {
     if (testRunnerRef.current) {
       testRunnerRef.current.stop();
+    }
+  };
+
+  // Finalizar teste (continuar com validações em modo manual)
+  const handleFinishTest = () => {
+    if (testRunnerRef.current) {
+      testRunnerRef.current.resume();
     }
   };
 
@@ -601,7 +625,13 @@ const TestAutomation = () => {
 
                     {/* Tab: Builder Visual */}
                     <TabsContent value="builder" className="space-y-3 mt-0">
-                      <TestScenarioBuilder onRunTest={handleRunTestFromBuilder} />
+                      <TestScenarioBuilder
+                        onRunTest={handleRunTestFromBuilder}
+                        isRunning={isRunning}
+                        isTestPaused={isTestPaused}
+                        onFinishTest={handleFinishTest}
+                        onStopTest={handleStopTest}
+                      />
                     </TabsContent>
 
                     {/* Tab: Editor JSON */}
@@ -714,33 +744,53 @@ const TestAutomation = () => {
                   )}
 
                   {/* Botões de Execução */}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleRunTest}
-                      disabled={!currentScenario || isRunning}
-                      className="flex-1"
-                    >
-                      {isRunning ? (
-                        <>
-                          <Square className="h-4 w-4 mr-2 animate-pulse" />
-                          Executando...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4 mr-2" />
-                          Executar Teste
-                        </>
-                      )}
-                    </Button>
-                    {isRunning && (
-                      <Button
-                        onClick={handleStopTest}
-                        variant="destructive"
-                      >
-                        <Square className="h-4 w-4 mr-2" />
-                        Parar
-                      </Button>
+                  <div className="space-y-2">
+                    {isTestPaused && (
+                      <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-500">
+                        <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                        <AlertDescription className="text-xs text-yellow-700 dark:text-yellow-300">
+                          ⏸️ Teste pausado - Aguardando validação manual
+                        </AlertDescription>
+                      </Alert>
                     )}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleRunTest}
+                        disabled={!currentScenario || isRunning}
+                        className="flex-1"
+                      >
+                        {isRunning ? (
+                          <>
+                            <Square className="h-4 w-4 mr-2 animate-pulse" />
+                            Executando...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            Executar Teste
+                          </>
+                        )}
+                      </Button>
+                      {isRunning && isTestPaused && (
+                        <Button
+                          onClick={handleFinishTest}
+                          variant="default"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Finalizar Teste
+                        </Button>
+                      )}
+                      {isRunning && !isTestPaused && (
+                        <Button
+                          onClick={handleStopTest}
+                          variant="destructive"
+                        >
+                          <Square className="h-4 w-4 mr-2" />
+                          Parar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                       </div>
                     </TabsContent>
